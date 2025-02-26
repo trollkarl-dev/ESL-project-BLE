@@ -414,6 +414,29 @@ static void bsp_event_handler(bsp_event_t event)
     }
 }
 
+static const uint16_t manufacturer_id = 0x1234;
+static const char manufacturer_short_name[] = "Dmitry";
+static const char manufacturer_full_name[] = "Dmitry Machnev";
+
+static const ble_advdata_manuf_data_t manuf_short_data =
+{
+    .company_identifier = manufacturer_id,
+    .data =
+    {
+        .p_data = (uint8_t *) manufacturer_short_name,
+        .size = sizeof(manufacturer_short_name)
+    }
+};
+
+static const ble_advdata_manuf_data_t manuf_full_data =
+{
+    .company_identifier = manufacturer_id,
+    .data =
+    {
+        .p_data = (uint8_t *) manufacturer_full_name,
+        .size = sizeof(manufacturer_full_name)
+    }
+};
 
 /**@brief Function for initializing the Advertising functionality.
  */
@@ -435,7 +458,9 @@ static void advertising_init(void)
     init.config.ble_adv_fast_timeout  = APP_ADV_DURATION;
 
     // TODO: Add more data to the advertisement data
+    init.advdata.p_manuf_specific_data = (ble_advdata_manuf_data_t *) &manuf_short_data; 
     // TODO: Add more data to the scan response data
+    init.srdata.p_manuf_specific_data = (ble_advdata_manuf_data_t *) &manuf_full_data; 
 
     init.evt_handler = on_adv_evt;
 
