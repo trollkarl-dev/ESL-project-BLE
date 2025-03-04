@@ -389,6 +389,8 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             // No implementation needed.
             break;
     }
+
+    estc_ble_service_on_ble_event(p_ble_evt, p_context);
 }
 
 
@@ -458,7 +460,6 @@ static void advertising_init(void)
     init.advdata.name_type               = BLE_ADVDATA_FULL_NAME;
     init.advdata.flags                   = BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
 
-    // TODO: 6. Consider moving the device characteristics to the Scan Response if necessary
     init.srdata.uuids_complete.uuid_cnt = sizeof(m_adv_uuids) / sizeof(m_adv_uuids[0]);
     init.srdata.uuids_complete.p_uuids  = m_adv_uuids;
 

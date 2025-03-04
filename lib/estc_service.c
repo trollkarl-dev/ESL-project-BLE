@@ -38,10 +38,32 @@
 #include "ble_srv_common.h"
 
 static ble_uuid128_t const m_base_uuid128 = { ESTC_BASE_UUID };
+static uint8_t charact_1 = 0;
 
 extern ble_estc_service_t m_estc_service; 
 
 static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service);
+
+void estc_ble_service_on_ble_event(const ble_evt_t *ble_evt, void *ctx)
+{
+    const ble_gatts_evt_write_t * p_evt_write;
+
+    switch (ble_evt->header.evt_id)
+    {
+        case BLE_GATTS_EVT_WRITE:
+            p_evt_write = &ble_evt->evt.gatts_evt.params.write;
+            if (p_evt_write->handle == m_estc_service.custom_value_handles.value_handle)
+            {
+                charact_1 = p_evt_write->data[0];
+                NRF_LOG_INFO("\e[32mCharacteristic 1\e[0m value is %d", charact_1);
+            }
+
+            break;
+        
+        default:
+            break;
+    }
+}
 
 ret_code_t estc_ble_service_init(ble_estc_service_t *service)
 {
@@ -67,30 +89,39 @@ ret_code_t estc_ble_service_init(ble_estc_service_t *service)
 static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
 {
     ret_code_t error_code = NRF_SUCCESS;
-
+    ble_uuid_t ble_uuid = { .uuid = ESTC_GATT_CHAR_1_UUID,
+                            .type = BLE_UUID_TYPE_BLE };
     // TODO: 6.1. Add custom characteristic UUID using `sd_ble_uuid_vs_add`, same as in step 4
 
-
-    // TODO: 6.5. Configure Characteristic metadata (enable read and write)
     ble_gatts_char_md_t char_md = { 0 };
 
+    char_md.char_props.read = 1;
+    char_md.char_props.write = 1;
 
-    // Configures attribute metadata. For now we only specify that the attribute will be stored in the softdevice
+    /*
+     * Configures attribute metadata. For now we only specify that the attribute will be stored in the softdevice
+     * Set read/write security levels to our attribute metadata
+     */
     ble_gatts_attr_md_t attr_md = { 0 };
+
     attr_md.vloc = BLE_GATTS_VLOC_STACK;
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.write_perm);
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.read_perm);
 
-
-    // TODO: 6.6. Set read/write security levels to our attribute metadata using `BLE_GAP_CONN_SEC_MODE_SET_OPEN`
-
-
-    // TODO: 6.2. Configure the characteristic value attribute (set the UUID and metadata)
+    /* Configure the characteristic value attribute */
     ble_gatts_attr_t attr_char_value = { 0 };
 
+    attr_char_value.p_uuid = &ble_uuid;
+    attr_char_value.p_attr_md = &attr_md;
+    attr_char_value.init_len = sizeof(uint8_t);
+    attr_char_value.init_offs = 0;
+    attr_char_value.max_len = sizeof(uint8_t);
 
-    // TODO: 6.7. Set characteristic length in number of bytes in attr_char_value structure
+    /* Add new characteristic to the service */
+    error_code = sd_ble_gatts_characteristic_add(service->service_handle,
+                                                 &char_md,
+                                                 &attr_char_value,
+                                                 &service->custom_value_handles);
 
-
-    // TODO: 6.4. Add new characteristic to the service using `sd_ble_gatts_characteristic_add`
-
-    return NRF_SUCCESS;
+    return error_code;
 }
