@@ -42,13 +42,17 @@
                          0x6B, 0x42, 0x52, 0xC9, \
                          0x00, 0x00, 0x9C, 0x0F }
 #define ESTC_SERVICE_UUID 0xDBF2
-
+#define ESTC_GATT_CHAR_1_UUID 0x0001
 
 typedef struct
 {
     uint16_t service_handle;
+    uint16_t connection_handle;
+    // TODO: 6.3. Add handles for characterstic (type: ble_gatts_char_handles_t)
 } ble_estc_service_t;
 
 ret_code_t estc_ble_service_init(ble_estc_service_t *service);
+void estc_ble_service_on_ble_event(const ble_evt_t *ble_evt, void *ctx);
+void estc_update_characteristic_1_value(ble_estc_service_t *service, int32_t *value);
 
 #endif /* ESTC_SERVICE_H__ */
