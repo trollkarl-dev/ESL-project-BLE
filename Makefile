@@ -7,7 +7,7 @@ SDK_ROOT ?= /home/trollkarl/Soft/esl-nsdk
 PROJ_DIR := .
 
 $(OUTPUT_DIRECTORY)/nrf52840_xxaa.out: \
-  LINKER_SCRIPT  := estc_service_gcc_nrf52.ld
+  LINKER_SCRIPT  := gcc_nrf52.ld
 
 # Source files common to all targets
 SRC_FILES += \
