@@ -48,7 +48,7 @@ typedef struct
 {
     uint16_t service_handle;
     uint16_t connection_handle;
-    ble_gatts_char_handles_t custom_value_handles;
+    ble_gatts_char_handles_t char_1_handles;
 } ble_estc_service_t;
 
 ret_code_t estc_ble_service_init(ble_estc_service_t *service);

@@ -38,11 +38,10 @@
 #include "ble_srv_common.h"
 
 static ble_uuid128_t const m_base_uuid128 = { ESTC_BASE_UUID };
-static uint8_t charact_1 = 0;
-
-extern ble_estc_service_t m_estc_service; 
 
 static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service);
+
+extern ble_estc_service_t m_estc_service; 
 
 void estc_ble_service_on_ble_event(const ble_evt_t *ble_evt, void *ctx)
 {
@@ -52,10 +51,11 @@ void estc_ble_service_on_ble_event(const ble_evt_t *ble_evt, void *ctx)
     {
         case BLE_GATTS_EVT_WRITE:
             p_evt_write = &ble_evt->evt.gatts_evt.params.write;
-            if (p_evt_write->handle == m_estc_service.custom_value_handles.value_handle)
+            if (p_evt_write->handle == m_estc_service.char_1_handles.value_handle)
             {
-                charact_1 = p_evt_write->data[0];
-                NRF_LOG_INFO("\e[32mCharacteristic 1\e[0m value is %d", charact_1);
+                NRF_LOG_INFO("\e[32mCharacteristic 1\e[0m value is %d (0x%02X)",
+                             p_evt_write->data[0],
+                             p_evt_write->data[0]);
             }
 
             break;
@@ -63,6 +63,11 @@ void estc_ble_service_on_ble_event(const ble_evt_t *ble_evt, void *ctx)
         default:
             break;
     }
+}
+
+void estc_update_characteristic_1_value(ble_estc_service_t *service, int32_t *value)
+{
+
 }
 
 ret_code_t estc_ble_service_init(ble_estc_service_t *service)
@@ -91,7 +96,6 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
     ret_code_t error_code = NRF_SUCCESS;
     ble_uuid_t ble_uuid = { .uuid = ESTC_GATT_CHAR_1_UUID,
                             .type = BLE_UUID_TYPE_BLE };
-    // TODO: 6.1. Add custom characteristic UUID using `sd_ble_uuid_vs_add`, same as in step 4
 
     ble_gatts_char_md_t char_md = { 0 };
 
@@ -99,7 +103,8 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
     char_md.char_props.write = 1;
 
     /*
-     * Configures attribute metadata. For now we only specify that the attribute will be stored in the softdevice
+     * Configures attribute metadata
+     * For now we only specify that the attribute will be stored in the softdevice
      * Set read/write security levels to our attribute metadata
      */
     ble_gatts_attr_md_t attr_md = { 0 };
@@ -121,7 +126,7 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
     error_code = sd_ble_gatts_characteristic_add(service->service_handle,
                                                  &char_md,
                                                  &attr_char_value,
-                                                 &service->custom_value_handles);
+                                                 &service->char_1_handles);
 
     return error_code;
 }
