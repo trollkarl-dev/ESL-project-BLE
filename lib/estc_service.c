@@ -44,9 +44,9 @@ extern ble_estc_service_t m_estc_service;
 ret_code_t estc_ble_service_init(ble_estc_service_t *service)
 {
     ret_code_t error_code;
-    ble_uuid_t service_uuid;
+    ble_uuid_t service_uuid = { .uuid = ESTC_SERVICE_UUID,
+                                .type = BLE_UUID_TYPE_BLE };
 
-    service_uuid.uuid = ESTC_SERVICE_UUID;
     error_code = sd_ble_uuid_vs_add(&m_base_uuid128, &service_uuid.type);
     APP_ERROR_CHECK(error_code);
 
