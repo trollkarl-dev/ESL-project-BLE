@@ -115,6 +115,9 @@ static ble_uuid_t m_adv_uuids[] =                                               
 
 ble_estc_service_t m_estc_service; /**< ESTC example BLE service */
 
+#define CHAR_2_UPD_PERIOD_MS 1000
+APP_TIMER_DEF(char_2_upd_timer);
+
 static void advertising_start(void);
 
 
@@ -134,6 +137,25 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
     app_error_handler(DEAD_BEEF, line_num, p_file_name);
 }
 
+volatile uint8_t char_2_counter = 0;
+
+static void char_2_upd_timer_handler(void *ctx)
+{
+    ble_estc_service_t *service = (ble_estc_service_t *) ctx;
+    ble_gatts_value_t value;
+
+    value.len = sizeof(char_2_counter);
+    value.offset = 0;
+    value.p_value = (uint8_t *) &char_2_counter;
+
+    sd_ble_gatts_value_set(service->connection_handle,
+                           service->char_2_handles.value_handle,
+                           &value);
+
+    NRF_LOG_INFO("\e[33mCharacteristic 2\e[0m is set to %d", char_2_counter);
+    char_2_counter++;
+}
+
 /**@brief Function for the Timer initialization.
  *
  * @details Initializes the timer module. This creates and starts application timers.
@@ -143,6 +165,10 @@ static void timers_init(void)
     // Initialize timer module.
     ret_code_t err_code = app_timer_init();
     APP_ERROR_CHECK(err_code);
+
+    app_timer_create(&char_2_upd_timer,
+                     APP_TIMER_MODE_REPEATED,
+                     char_2_upd_timer_handler);
 }
 
 
@@ -344,6 +370,9 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
         case BLE_GAP_EVT_DISCONNECTED:
             NRF_LOG_INFO("Disconnected (conn_handle: %d)", p_ble_evt->evt.gap_evt.conn_handle);
             // LED indication will be changed when advertising starts.
+
+            app_timer_stop(char_2_upd_timer);
+
             break;
 
         case BLE_GAP_EVT_CONNECTED:
@@ -355,6 +384,11 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
             err_code = nrf_ble_qwr_conn_handle_assign(&m_qwr, m_conn_handle);
             APP_ERROR_CHECK(err_code);
+
+            app_timer_start(char_2_upd_timer,
+                            APP_TIMER_TICKS(CHAR_2_UPD_PERIOD_MS),
+                            &m_estc_service);
+
             break;
 
         case BLE_GAP_EVT_PHY_UPDATE_REQUEST:
