@@ -115,7 +115,7 @@ static ble_uuid_t m_adv_uuids[] =                                               
 
 ble_estc_service_t m_estc_service; /**< ESTC example BLE service */
 
-#define CHAR_2_UPD_PERIOD_MS 1000
+#define CHAR_2_UPD_PERIOD_MS 250
 APP_TIMER_DEF(char_2_upd_timer);
 
 static void advertising_start(void);
@@ -137,7 +137,7 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
     app_error_handler(DEAD_BEEF, line_num, p_file_name);
 }
 
-volatile uint8_t char_2_counter = 0;
+volatile uint16_t char_2_counter = 0;
 
 static void char_2_upd_timer_handler(void *ctx)
 {

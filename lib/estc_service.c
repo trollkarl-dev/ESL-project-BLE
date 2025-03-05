@@ -105,7 +105,7 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
     /* FIRST CHARACTERICTIC */
 
     const char char_1_user_description[] = "Test single-byte custom characteristic with read and write properties";
-    const char char_2_user_description[] = "Read-only test single-byte custom characteristic";
+    const char char_2_user_description[] = "Read-only test two-bytes custom characteristic";
 
     memset(&char_md, 0, sizeof(ble_gatts_char_md_t));
 
@@ -166,9 +166,9 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
 
     attr_char_value.p_uuid = &ble_uuid;
     attr_char_value.p_attr_md = &attr_md;
-    attr_char_value.init_len = sizeof(uint8_t);
+    attr_char_value.init_len = sizeof(uint16_t);
     attr_char_value.init_offs = 0;
-    attr_char_value.max_len = sizeof(uint8_t);
+    attr_char_value.max_len = sizeof(uint16_t);
 
     return sd_ble_gatts_characteristic_add(service->service_handle,
                                            &char_md,
