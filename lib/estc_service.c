@@ -101,17 +101,22 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
     ble_gatts_char_md_t char_md;
     ble_gatts_attr_md_t attr_md;
     ble_gatts_attr_t attr_char_value;
+    ble_gatts_char_pf_t char_pf;
 
     /* FIRST CHARACTERICTIC */
 
     const char char_1_user_description[] = "Test single-byte custom characteristic with read and write properties";
     const char char_2_user_description[] = "Read-only test two-bytes custom characteristic";
 
+    memset(&char_pf, 0, sizeof(ble_gatts_char_pf_t));
+    char_pf.format = BLE_GATT_CPF_FORMAT_UINT8;
+
     memset(&char_md, 0, sizeof(ble_gatts_char_md_t));
 
     char_md.p_char_user_desc = (uint8_t *) char_1_user_description;
     char_md.char_user_desc_size = strlen(char_1_user_description);
     char_md.char_user_desc_max_size = strlen(char_1_user_description);
+    char_md.p_char_pf = &char_pf;
     char_md.char_props.read = 1;
     char_md.char_props.write = 1;
 
@@ -150,11 +155,15 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
 
     ble_uuid.uuid = ESTC_GATT_CHAR_2_UUID;
 
+    memset(&char_pf, 0, sizeof(ble_gatts_char_pf_t));
+    char_pf.format = BLE_GATT_CPF_FORMAT_UINT16;
+
     memset(&char_md, 0, sizeof(ble_gatts_char_md_t));
 
     char_md.p_char_user_desc = (uint8_t *) char_2_user_description;
     char_md.char_user_desc_size = strlen(char_2_user_description);
     char_md.char_user_desc_max_size = strlen(char_2_user_description);
+    char_md.p_char_pf = &char_pf;
     char_md.char_props.read = 1;
     char_md.char_props.notify = 1;
 
