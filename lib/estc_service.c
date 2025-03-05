@@ -99,6 +99,12 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
 
     ble_gatts_char_md_t char_md = { 0 };
 
+    const char char_1_user_description[] = "Test single-byte custom characteristic";
+
+    char_md.p_char_user_desc = (uint8_t *) char_1_user_description;
+    char_md.char_user_desc_size = strlen(char_1_user_description);
+    char_md.char_user_desc_max_size = strlen(char_1_user_description);
+
     char_md.char_props.read = 1;
     char_md.char_props.write = 1;
 
