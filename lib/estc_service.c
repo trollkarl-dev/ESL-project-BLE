@@ -93,18 +93,25 @@ ret_code_t estc_ble_service_init(ble_estc_service_t *service)
 
 static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
 {
-    ret_code_t error_code = NRF_SUCCESS;
+    ret_code_t error_code;
+
     ble_uuid_t ble_uuid = { .uuid = ESTC_GATT_CHAR_1_UUID,
                             .type = BLE_UUID_TYPE_BLE };
 
-    ble_gatts_char_md_t char_md = { 0 };
+    ble_gatts_char_md_t char_md;
+    ble_gatts_attr_md_t attr_md;
+    ble_gatts_attr_t attr_char_value;
 
-    const char char_1_user_description[] = "Test single-byte custom characteristic";
+    /* FIRST CHARACTERICTIC */
+
+    const char char_1_user_description[] = "Test single-byte custom characteristic with read and write properties";
+    const char char_2_user_description[] = "Read-only test single-byte custom characteristic";
+
+    memset(&char_md, 0, sizeof(ble_gatts_char_md_t));
 
     char_md.p_char_user_desc = (uint8_t *) char_1_user_description;
     char_md.char_user_desc_size = strlen(char_1_user_description);
     char_md.char_user_desc_max_size = strlen(char_1_user_description);
-
     char_md.char_props.read = 1;
     char_md.char_props.write = 1;
 
@@ -113,14 +120,14 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
      * For now we only specify that the attribute will be stored in the softdevice
      * Set read/write security levels to our attribute metadata
      */
-    ble_gatts_attr_md_t attr_md = { 0 };
+    memset(&attr_md, 0, sizeof(ble_gatts_attr_md_t));
 
     attr_md.vloc = BLE_GATTS_VLOC_STACK;
     BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.write_perm);
     BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.read_perm);
 
     /* Configure the characteristic value attribute */
-    ble_gatts_attr_t attr_char_value = { 0 };
+    memset(&attr_char_value, 0, sizeof(ble_gatts_attr_t));
 
     attr_char_value.p_uuid = &ble_uuid;
     attr_char_value.p_attr_md = &attr_md;
@@ -134,5 +141,37 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
                                                  &attr_char_value,
                                                  &service->char_1_handles);
 
-    return error_code;
+    if (error_code != NRF_SUCCESS)
+    {
+        return error_code;
+    }
+
+    /* SECOND CHARACTERICTIC */
+
+    ble_uuid.uuid = ESTC_GATT_CHAR_2_UUID;
+
+    memset(&char_md, 0, sizeof(ble_gatts_char_md_t));
+
+    char_md.p_char_user_desc = (uint8_t *) char_2_user_description;
+    char_md.char_user_desc_size = strlen(char_2_user_description);
+    char_md.char_user_desc_max_size = strlen(char_2_user_description);
+    char_md.char_props.read = 1;
+
+    memset(&attr_md, 0, sizeof(ble_gatts_attr_md_t));
+
+    attr_md.vloc = BLE_GATTS_VLOC_STACK;
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.read_perm);
+
+    memset(&attr_char_value, 0, sizeof(ble_gatts_attr_t));
+
+    attr_char_value.p_uuid = &ble_uuid;
+    attr_char_value.p_attr_md = &attr_md;
+    attr_char_value.init_len = sizeof(uint8_t);
+    attr_char_value.init_offs = 0;
+    attr_char_value.max_len = sizeof(uint8_t);
+
+    return sd_ble_gatts_characteristic_add(service->service_handle,
+                                           &char_md,
+                                           &attr_char_value,
+                                           &service->char_2_handles);
 }
