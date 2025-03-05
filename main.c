@@ -152,7 +152,9 @@ static void char_2_upd_timer_handler(void *ctx)
                            service->char_2_handles.value_handle,
                            &value);
 
-    NRF_LOG_INFO("\e[33mCharacteristic 2\e[0m is set to %d", char_2_counter);
+    NRF_LOG_INFO("\e[33mCharacteristic 2\e[0m is set to %d (0x%04X)",
+                 char_2_counter,
+                 char_2_counter);
     char_2_counter++;
 }
 
