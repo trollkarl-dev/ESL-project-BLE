@@ -156,6 +156,7 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
     char_md.char_user_desc_size = strlen(char_2_user_description);
     char_md.char_user_desc_max_size = strlen(char_2_user_description);
     char_md.char_props.read = 1;
+    char_md.char_props.notify = 1;
 
     memset(&attr_md, 0, sizeof(ble_gatts_attr_md_t));
 
