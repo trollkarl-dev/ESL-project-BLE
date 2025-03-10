@@ -1,33 +1,3 @@
-/**
- * Copyright 2022 Evgeniy Morozov
- *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice,
- * this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice,
- * this list of conditions and the following disclaimer in the documentation
- * and/or other materials provided with the distribution.
- *
- * 3. Neither the name of the copyright holder nor the names of its contributors
- * may be used to endorse or promote products derived from this software without
- * specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY
- * WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE
-*/
-
 #include "estc_service.h"
 
 #include "app_error.h"
@@ -93,58 +63,53 @@ ret_code_t estc_ble_service_init(ble_estc_service_t *service)
 
 static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
 {
-    ret_code_t error_code;
-
-    ble_uuid_t ble_uuid = { .uuid = ESTC_GATT_CHAR_1_UUID,
-                            .type = BLE_UUID_TYPE_BLE };
-
-    ble_gatts_char_md_t char_md;
-    ble_gatts_attr_md_t attr_md;
-    ble_gatts_attr_t attr_char_value;
+    ble_add_char_params_t add_char_params;
+    ble_add_char_user_desc_t add_char_user_desc;
     ble_gatts_char_pf_t char_pf;
 
-    /* FIRST CHARACTERICTIC */
+    ret_code_t error_code;
+    
+    const char char_1_user_description[] = "Test single-byte "
+                                           "custom characteristic "
+                                           "with read and write capabilities";
 
-    const char char_1_user_description[] = "Test single-byte custom characteristic with read and write properties";
-    const char char_2_user_description[] = "Read-only test two-bytes custom characteristic";
+    const char char_2_user_description[] = "Test two-bytes "
+                                           "custom characteristic "
+                                           "with read capability";
+
+    /* FIRST CHARACTERISTIC */
+
+    memset(&add_char_user_desc, 0, sizeof(ble_add_char_user_desc_t));
+
+    add_char_user_desc.max_size = strlen(char_1_user_description);
+    add_char_user_desc.size = strlen(char_1_user_description);
+    add_char_user_desc.p_char_user_desc = (uint8_t *) char_1_user_description;
+    add_char_user_desc.is_value_user = false;
+    add_char_user_desc.is_var_len = false;
+    add_char_user_desc.char_props.read = 1;
+    add_char_user_desc.read_access = SEC_OPEN;
 
     memset(&char_pf, 0, sizeof(ble_gatts_char_pf_t));
     char_pf.format = BLE_GATT_CPF_FORMAT_UINT8;
 
-    memset(&char_md, 0, sizeof(ble_gatts_char_md_t));
+    memset(&add_char_params, 0, sizeof(ble_add_char_params_t));
 
-    char_md.p_char_user_desc = (uint8_t *) char_1_user_description;
-    char_md.char_user_desc_size = strlen(char_1_user_description);
-    char_md.char_user_desc_max_size = strlen(char_1_user_description);
-    char_md.p_char_pf = &char_pf;
-    char_md.char_props.read = 1;
-    char_md.char_props.write = 1;
+    add_char_params.uuid = ESTC_GATT_CHAR_1_UUID;
+    add_char_params.uuid_type = BLE_UUID_TYPE_BLE;
+    add_char_params.init_len = sizeof(uint8_t);
+    add_char_params.max_len = sizeof(uint8_t);
+    add_char_params.char_props.read = 1;
+    add_char_params.char_props.write = 1;
+    add_char_params.is_var_len = false;
+    add_char_params.is_value_user = false;
+    add_char_params.read_access = SEC_OPEN;
+    add_char_params.write_access = SEC_OPEN;
+    add_char_params.p_user_descr = &add_char_user_desc;
+    add_char_params.p_presentation_format = &char_pf;
 
-    /*
-     * Configures attribute metadata
-     * For now we only specify that the attribute will be stored in the softdevice
-     * Set read/write security levels to our attribute metadata
-     */
-    memset(&attr_md, 0, sizeof(ble_gatts_attr_md_t));
-
-    attr_md.vloc = BLE_GATTS_VLOC_STACK;
-    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.write_perm);
-    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.read_perm);
-
-    /* Configure the characteristic value attribute */
-    memset(&attr_char_value, 0, sizeof(ble_gatts_attr_t));
-
-    attr_char_value.p_uuid = &ble_uuid;
-    attr_char_value.p_attr_md = &attr_md;
-    attr_char_value.init_len = sizeof(uint8_t);
-    attr_char_value.init_offs = 0;
-    attr_char_value.max_len = sizeof(uint8_t);
-
-    /* Add new characteristic to the service */
-    error_code = sd_ble_gatts_characteristic_add(service->service_handle,
-                                                 &char_md,
-                                                 &attr_char_value,
-                                                 &service->char_1_handles);
+    error_code = characteristic_add(service->service_handle,
+                                    &add_char_params,
+                                    &service->char_1_handles);
 
     if (error_code != NRF_SUCCESS)
     {
@@ -153,34 +118,33 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
 
     /* SECOND CHARACTERICTIC */
 
-    ble_uuid.uuid = ESTC_GATT_CHAR_2_UUID;
+    memset(&add_char_user_desc, 0, sizeof(ble_add_char_user_desc_t));
+
+    add_char_user_desc.max_size = strlen(char_2_user_description);
+    add_char_user_desc.size = strlen(char_2_user_description);
+    add_char_user_desc.p_char_user_desc = (uint8_t *) char_2_user_description;
+    add_char_user_desc.is_value_user = false;
+    add_char_user_desc.is_var_len = false;
+    add_char_user_desc.char_props.read = 1;
+    add_char_user_desc.read_access = SEC_OPEN;
 
     memset(&char_pf, 0, sizeof(ble_gatts_char_pf_t));
     char_pf.format = BLE_GATT_CPF_FORMAT_UINT16;
 
-    memset(&char_md, 0, sizeof(ble_gatts_char_md_t));
+    memset(&add_char_params, 0, sizeof(ble_add_char_params_t));
 
-    char_md.p_char_user_desc = (uint8_t *) char_2_user_description;
-    char_md.char_user_desc_size = strlen(char_2_user_description);
-    char_md.char_user_desc_max_size = strlen(char_2_user_description);
-    char_md.p_char_pf = &char_pf;
-    char_md.char_props.read = 1;
+    add_char_params.uuid = ESTC_GATT_CHAR_2_UUID;
+    add_char_params.uuid_type = BLE_UUID_TYPE_BLE;
+    add_char_params.init_len = sizeof(uint16_t);
+    add_char_params.max_len = sizeof(uint16_t);
+    add_char_params.char_props.read = 1;
+    add_char_params.is_var_len = false;
+    add_char_params.is_value_user = false;
+    add_char_params.read_access = SEC_OPEN;
+    add_char_params.p_user_descr = &add_char_user_desc;
+    add_char_params.p_presentation_format = &char_pf;
 
-    memset(&attr_md, 0, sizeof(ble_gatts_attr_md_t));
-
-    attr_md.vloc = BLE_GATTS_VLOC_STACK;
-    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.read_perm);
-
-    memset(&attr_char_value, 0, sizeof(ble_gatts_attr_t));
-
-    attr_char_value.p_uuid = &ble_uuid;
-    attr_char_value.p_attr_md = &attr_md;
-    attr_char_value.init_len = sizeof(uint16_t);
-    attr_char_value.init_offs = 0;
-    attr_char_value.max_len = sizeof(uint16_t);
-
-    return sd_ble_gatts_characteristic_add(service->service_handle,
-                                           &char_md,
-                                           &attr_char_value,
-                                           &service->char_2_handles);
+    return characteristic_add(service->service_handle,
+                              &add_char_params,
+                              &service->char_2_handles);
 }
