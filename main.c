@@ -143,40 +143,19 @@ static void char_2_upd_timer_handler(void *ctx)
 {
     ble_estc_service_t *service = (ble_estc_service_t *) ctx;
 
-    if (char_2_counter % 10)
-    {
-        ble_gatts_value_t value;
+    ble_gatts_value_t value;
 
-        value.len = sizeof(char_2_counter);
-        value.offset = 0;
-        value.p_value = (uint8_t *) &char_2_counter;
+    value.len = sizeof(char_2_counter);
+    value.offset = 0;
+    value.p_value = (uint8_t *) &char_2_counter;
 
-        sd_ble_gatts_value_set(service->connection_handle,
-                               service->char_2_handles.value_handle,
-                               &value);
+    sd_ble_gatts_value_set(service->connection_handle,
+                           service->char_2_handles.value_handle,
+                           &value);
 
-        NRF_LOG_INFO("\e[33mCharacteristic 2\e[0m is set to %d (0x%04X)",
-                     char_2_counter,
-                     char_2_counter);
-    }
-    else
-    {
-        ble_gatts_hvx_params_t params;
-        uint16_t len = sizeof(char_2_counter);
-
-        memset(&params, 0, sizeof(ble_gatts_hvx_params_t));
-
-        params.type = BLE_GATT_HVX_NOTIFICATION;
-        params.handle = service->char_2_handles.value_handle;
-        params.p_data = (uint8_t *) &char_2_counter;
-        params.p_len = &len;
-
-        sd_ble_gatts_hvx(service->connection_handle, &params);
-
-        NRF_LOG_INFO("\e[34mCharacteristic 2\e[0m value (%d, 0x%04X) was sended as notification",
-                     char_2_counter,
-                     char_2_counter);
-    }
+    NRF_LOG_INFO("\e[33mCharacteristic 2\e[0m: %d (0x%04X)",
+                 char_2_counter,
+                 char_2_counter);
 
     char_2_counter++;
 }

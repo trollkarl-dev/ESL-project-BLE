@@ -53,7 +53,7 @@ void estc_ble_service_on_ble_event(const ble_evt_t *ble_evt, void *ctx)
             p_evt_write = &ble_evt->evt.gatts_evt.params.write;
             if (p_evt_write->handle == m_estc_service.char_1_handles.value_handle)
             {
-                NRF_LOG_INFO("\e[32mCharacteristic 1\e[0m value is %d (0x%02X)",
+                NRF_LOG_INFO("\e[32mCharacteristic 1\e[0m: %d (0x%02X)",
                              p_evt_write->data[0],
                              p_evt_write->data[0]);
             }
@@ -165,7 +165,6 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
     char_md.char_user_desc_max_size = strlen(char_2_user_description);
     char_md.p_char_pf = &char_pf;
     char_md.char_props.read = 1;
-    char_md.char_props.notify = 1;
 
     memset(&attr_md, 0, sizeof(ble_gatts_attr_md_t));
 

@@ -41,9 +41,11 @@
                          0x1C, 0x2F, 0x0E, 0x95, \
                          0x6B, 0x42, 0x52, 0xC9, \
                          0x00, 0x00, 0x9C, 0x0F }
+
 #define ESTC_SERVICE_UUID 0xDBF2
-#define ESTC_GATT_CHAR_1_UUID 0xDBF3
-#define ESTC_GATT_CHAR_2_UUID 0xDBF4
+
+#define ESTC_GATT_CHAR_1_UUID 0xDBF3 /* read and write single-byte */
+#define ESTC_GATT_CHAR_2_UUID 0xDBF4 /* read-only two-bytes */
 
 typedef struct
 {
