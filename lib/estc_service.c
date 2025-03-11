@@ -23,7 +23,8 @@ void estc_ble_service_on_ble_event(const ble_evt_t *ble_evt, void *ctx)
             p_evt_write = &ble_evt->evt.gatts_evt.params.write;
             if (p_evt_write->handle == m_estc_service.char_1_handles.value_handle)
             {
-                NRF_LOG_INFO("\e[32mCharacteristic 1\e[0m: %d (0x%02X)",
+                NRF_LOG_INFO("%s: %d (0x%02X)",
+                             CHAR_1_LABEL,
                              p_evt_write->data[0],
                              p_evt_write->data[0]);
             }
@@ -69,21 +70,10 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
 
     ret_code_t error_code;
     
-    const char char_1_user_description[] = "Test single-byte "
-                                           "custom characteristic "
-                                           "with read and write capabilities";
-
-    const char char_2_user_description[] = "Test two-bytes "
-                                           "custom characteristic "
-                                           "with read capability";
-
-    const char char_3_user_description[] = "Test four-bytes "
-                                           "custom characteristic "
-                                           "with notify capability";
-
-    const char char_4_user_description[] = "Test four-bytes "
-                                           "custom characteristic "
-                                           "with indicate capability";
+    const char char_1_user_description[] = CHAR_1_DESCRIPTION;
+    const char char_2_user_description[] = CHAR_2_DESCRIPTION;
+    const char char_3_user_description[] = CHAR_3_DESCRIPTION;
+    const char char_4_user_description[] = CHAR_4_DESCRIPTION;
 
     /* FIRST CHARACTERISTIC */
 

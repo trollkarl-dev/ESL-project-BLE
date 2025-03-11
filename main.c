@@ -125,7 +125,8 @@ static void char_2_upd_timer_handler(void *ctx)
                            service->char_2_handles.value_handle,
                            &value);
 
-     NRF_LOG_INFO("\e[33mCharacteristic 2\e[0m: %d (0x%04X)",
+     NRF_LOG_INFO("%s: %d (0x%04X)",
+                  CHAR_2_LABEL,
                   char_2_counter,
                   char_2_counter);
 
@@ -146,7 +147,8 @@ static void char_3_upd_timer_handler(void *ctx)
                            service->char_3_handles.value_handle,
                            &value);
 
-     NRF_LOG_INFO("\e[34mCharacteristic 3\e[0m: %d (0x%08X)",
+     NRF_LOG_INFO("%s: %d (0x%08X)",
+                  CHAR_3_LABEL,
                   char_3_counter,
                   char_3_counter);
 
@@ -167,7 +169,8 @@ static void char_4_upd_timer_handler(void *ctx)
                            service->char_4_handles.value_handle,
                            &value);
 
-     NRF_LOG_INFO("\e[35mCharacteristic 4\e[0m: %d (0x%08X)",
+     NRF_LOG_INFO("%s: %d (0x%08X)",
+                  CHAR_4_LABEL,
                   char_4_counter,
                   char_4_counter);
 
@@ -202,9 +205,7 @@ static void notify_and_indicate_timer_handler(void *ctx)
 
             sd_ble_gatts_hvx(service->connection_handle, &params);
 
-            NRF_LOG_INFO("\e[34mCharacteristic 3\e[0m value (%d, 0x%04X) -> \e[36mNotify\e[0m",
-                         char_3_counter,
-                         char_3_counter);
+            NRF_LOG_INFO("%s -> %s", CHAR_3_LABEL, NOTIFY_CAPTION);
 
             message_type = msg_indicate_char_4;
             break;
@@ -219,9 +220,7 @@ static void notify_and_indicate_timer_handler(void *ctx)
 
             sd_ble_gatts_hvx(service->connection_handle, &params);
 
-            NRF_LOG_INFO("\e[35mCharacteristic 4\e[0m value (%d, 0x%04X) -> \e[36mIndicate\e[0m",
-                         char_4_counter,
-                         char_4_counter);
+            NRF_LOG_INFO("%s -> %s", CHAR_4_LABEL, INDICATE_CAPTION);
 
             message_type = msg_notify_char_3;
             break;
