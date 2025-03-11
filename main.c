@@ -84,6 +84,10 @@ APP_TIMER_DEF(char_2_upd_timer);
 APP_TIMER_DEF(char_3_upd_timer);
 APP_TIMER_DEF(char_4_upd_timer);
 
+#define NOTIFY_AND_INDICATE_PERIOD_MS 5000
+
+APP_TIMER_DEF(notify_and_indicate_timer);
+
 static void advertising_start(void);
 
 
@@ -169,6 +173,64 @@ static void char_4_upd_timer_handler(void *ctx)
 
     char_4_counter++;
 }
+
+typedef enum {
+    msg_notify_char_3,
+    msg_indicate_char_4
+} msg_t;
+
+static volatile msg_t message_type = msg_notify_char_3;
+
+static void notify_and_indicate_timer_handler(void *ctx)
+{
+    ble_estc_service_t *service = (ble_estc_service_t *) ctx;
+    ble_gatts_hvx_params_t params;
+
+    uint16_t len;
+
+    memset(&params, 0, sizeof(ble_gatts_hvx_params_t));
+
+    switch (message_type)
+    {
+        case msg_notify_char_3:
+            len = sizeof(char_3_counter);
+
+            params.type = BLE_GATT_HVX_NOTIFICATION;
+            params.handle = service->char_3_handles.value_handle;
+            params.p_data = (uint8_t *) &char_3_counter;
+            params.p_len = &len;
+
+            sd_ble_gatts_hvx(service->connection_handle, &params);
+
+            NRF_LOG_INFO("\e[34mCharacteristic 3\e[0m value (%d, 0x%04X) -> \e[36mNotify\e[0m",
+                         char_3_counter,
+                         char_3_counter);
+
+            message_type = msg_indicate_char_4;
+            break;
+
+        case msg_indicate_char_4:
+            len = sizeof(char_4_counter);
+
+            params.type = BLE_GATT_HVX_INDICATION;
+            params.handle = service->char_4_handles.value_handle;
+            params.p_data = (uint8_t *) &char_4_counter;
+            params.p_len = &len;
+
+            sd_ble_gatts_hvx(service->connection_handle, &params);
+
+            NRF_LOG_INFO("\e[35mCharacteristic 4\e[0m value (%d, 0x%04X) -> \e[36mIndicate\e[0m",
+                         char_4_counter,
+                         char_4_counter);
+
+            message_type = msg_notify_char_3;
+            break;
+
+        default:
+            break;
+    }
+}
+
 /**@brief Function for the Timer initialization.
  *
  * @details Initializes the timer module. This creates and starts application timers.
@@ -190,6 +252,10 @@ static void timers_init(void)
     app_timer_create(&char_4_upd_timer,
                      APP_TIMER_MODE_REPEATED,
                      char_4_upd_timer_handler);
+
+    app_timer_create(&notify_and_indicate_timer,
+                     APP_TIMER_MODE_REPEATED,
+                     notify_and_indicate_timer_handler);
 }
 
 
@@ -389,6 +455,10 @@ static void char_upd_timers_start(void)
     app_timer_start(char_4_upd_timer,
                     APP_TIMER_TICKS(CHAR_4_UPD_PERIOD_MS),
                     &m_estc_service);
+
+    app_timer_start(notify_and_indicate_timer,
+                    APP_TIMER_TICKS(NOTIFY_AND_INDICATE_PERIOD_MS),
+                    &m_estc_service);
 }
 
 static void char_upd_timers_stop(void)
@@ -396,6 +466,7 @@ static void char_upd_timers_stop(void)
     app_timer_stop(char_2_upd_timer);
     app_timer_stop(char_3_upd_timer);
     app_timer_stop(char_4_upd_timer);
+    app_timer_stop(notify_and_indicate_timer);
 }
 
 /**@brief Function for handling BLE events.
