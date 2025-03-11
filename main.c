@@ -76,9 +76,9 @@ static ble_uuid_t m_adv_uuids[] =                                               
 
 ble_estc_service_t m_estc_service; /**< ESTC example BLE service */
 
-#define CHAR_2_UPD_PERIOD_MS  250
-#define CHAR_3_UPD_PERIOD_MS  500
-#define CHAR_4_UPD_PERIOD_MS 1000
+#define CHAR_2_UPD_PERIOD_MS  500
+#define CHAR_3_UPD_PERIOD_MS 1000
+#define CHAR_4_UPD_PERIOD_MS 2000
 
 APP_TIMER_DEF(char_2_upd_timer);
 APP_TIMER_DEF(char_3_upd_timer);
@@ -121,6 +121,10 @@ static void char_2_upd_timer_handler(void *ctx)
                            service->char_2_handles.value_handle,
                            &value);
 
+     NRF_LOG_INFO("\e[33mCharacteristic 2\e[0m: %d (0x%04X)",
+                  char_2_counter,
+                  char_2_counter);
+
     char_2_counter++;
 }
 
@@ -138,6 +142,10 @@ static void char_3_upd_timer_handler(void *ctx)
                            service->char_3_handles.value_handle,
                            &value);
 
+     NRF_LOG_INFO("\e[34mCharacteristic 3\e[0m: %d (0x%08X)",
+                  char_3_counter,
+                  char_3_counter);
+
     char_3_counter++;
 }
 
@@ -154,6 +162,10 @@ static void char_4_upd_timer_handler(void *ctx)
     sd_ble_gatts_value_set(service->connection_handle,
                            service->char_4_handles.value_handle,
                            &value);
+
+     NRF_LOG_INFO("\e[35mCharacteristic 4\e[0m: %d (0x%08X)",
+                  char_4_counter,
+                  char_4_counter);
 
     char_4_counter++;
 }
@@ -364,6 +376,27 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
     }
 }
 
+static void char_upd_timers_start(void)
+{
+    app_timer_start(char_2_upd_timer,
+                    APP_TIMER_TICKS(CHAR_2_UPD_PERIOD_MS),
+                    &m_estc_service);
+
+    app_timer_start(char_3_upd_timer,
+                    APP_TIMER_TICKS(CHAR_3_UPD_PERIOD_MS),
+                    &m_estc_service);
+
+    app_timer_start(char_4_upd_timer,
+                    APP_TIMER_TICKS(CHAR_4_UPD_PERIOD_MS),
+                    &m_estc_service);
+}
+
+static void char_upd_timers_stop(void)
+{
+    app_timer_stop(char_2_upd_timer);
+    app_timer_stop(char_3_upd_timer);
+    app_timer_stop(char_4_upd_timer);
+}
 
 /**@brief Function for handling BLE events.
  *
@@ -380,9 +413,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             NRF_LOG_INFO("Disconnected (conn_handle: %d)", p_ble_evt->evt.gap_evt.conn_handle);
             // LED indication will be changed when advertising starts.
 
-            app_timer_stop(char_2_upd_timer);
-            app_timer_stop(char_3_upd_timer);
-            app_timer_stop(char_4_upd_timer);
+            char_upd_timers_stop();
 
             break;
 
@@ -396,17 +427,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             err_code = nrf_ble_qwr_conn_handle_assign(&m_qwr, m_conn_handle);
             APP_ERROR_CHECK(err_code);
 
-            app_timer_start(char_2_upd_timer,
-                            APP_TIMER_TICKS(CHAR_2_UPD_PERIOD_MS),
-                            &m_estc_service);
-
-            app_timer_start(char_3_upd_timer,
-                            APP_TIMER_TICKS(CHAR_3_UPD_PERIOD_MS),
-                            &m_estc_service);
-
-            app_timer_start(char_4_upd_timer,
-                            APP_TIMER_TICKS(CHAR_4_UPD_PERIOD_MS),
-                            &m_estc_service);
+            char_upd_timers_start();
 
             break;
 
