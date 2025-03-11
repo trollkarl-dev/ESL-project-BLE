@@ -76,8 +76,13 @@ static ble_uuid_t m_adv_uuids[] =                                               
 
 ble_estc_service_t m_estc_service; /**< ESTC example BLE service */
 
-#define CHAR_2_UPD_PERIOD_MS 250
+#define CHAR_2_UPD_PERIOD_MS  250
+#define CHAR_3_UPD_PERIOD_MS  500
+#define CHAR_4_UPD_PERIOD_MS 1000
+
 APP_TIMER_DEF(char_2_upd_timer);
+APP_TIMER_DEF(char_3_upd_timer);
+APP_TIMER_DEF(char_4_upd_timer);
 
 static void advertising_start(void);
 
@@ -99,6 +104,8 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
 }
 
 volatile uint16_t char_2_counter = 0;
+volatile uint32_t char_3_counter = 0;
+volatile uint32_t char_4_counter = 0;
 
 static void char_2_upd_timer_handler(void *ctx)
 {
@@ -114,13 +121,42 @@ static void char_2_upd_timer_handler(void *ctx)
                            service->char_2_handles.value_handle,
                            &value);
 
-    NRF_LOG_INFO("\e[33mCharacteristic 2\e[0m: %d (0x%04X)",
-                 char_2_counter,
-                 char_2_counter);
-
     char_2_counter++;
 }
 
+static void char_3_upd_timer_handler(void *ctx)
+{
+    ble_estc_service_t *service = (ble_estc_service_t *) ctx;
+
+    ble_gatts_value_t value;
+
+    value.len = sizeof(char_3_counter);
+    value.offset = 0;
+    value.p_value = (uint8_t *) &char_3_counter;
+
+    sd_ble_gatts_value_set(service->connection_handle,
+                           service->char_3_handles.value_handle,
+                           &value);
+
+    char_3_counter++;
+}
+
+static void char_4_upd_timer_handler(void *ctx)
+{
+    ble_estc_service_t *service = (ble_estc_service_t *) ctx;
+
+    ble_gatts_value_t value;
+
+    value.len = sizeof(char_4_counter);
+    value.offset = 0;
+    value.p_value = (uint8_t *) &char_4_counter;
+
+    sd_ble_gatts_value_set(service->connection_handle,
+                           service->char_4_handles.value_handle,
+                           &value);
+
+    char_4_counter++;
+}
 /**@brief Function for the Timer initialization.
  *
  * @details Initializes the timer module. This creates and starts application timers.
@@ -134,6 +170,14 @@ static void timers_init(void)
     app_timer_create(&char_2_upd_timer,
                      APP_TIMER_MODE_REPEATED,
                      char_2_upd_timer_handler);
+
+    app_timer_create(&char_3_upd_timer,
+                     APP_TIMER_MODE_REPEATED,
+                     char_3_upd_timer_handler);
+
+    app_timer_create(&char_4_upd_timer,
+                     APP_TIMER_MODE_REPEATED,
+                     char_4_upd_timer_handler);
 }
 
 
@@ -337,6 +381,8 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             // LED indication will be changed when advertising starts.
 
             app_timer_stop(char_2_upd_timer);
+            app_timer_stop(char_3_upd_timer);
+            app_timer_stop(char_4_upd_timer);
 
             break;
 
@@ -352,6 +398,14 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
 
             app_timer_start(char_2_upd_timer,
                             APP_TIMER_TICKS(CHAR_2_UPD_PERIOD_MS),
+                            &m_estc_service);
+
+            app_timer_start(char_3_upd_timer,
+                            APP_TIMER_TICKS(CHAR_3_UPD_PERIOD_MS),
+                            &m_estc_service);
+
+            app_timer_start(char_4_upd_timer,
+                            APP_TIMER_TICKS(CHAR_4_UPD_PERIOD_MS),
                             &m_estc_service);
 
             break;
