@@ -77,6 +77,14 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
                                            "custom characteristic "
                                            "with read capability";
 
+    const char char_3_user_description[] = "Test four-bytes "
+                                           "custom characteristic "
+                                           "with notify capability";
+
+    const char char_4_user_description[] = "Test four-bytes "
+                                           "custom characteristic "
+                                           "with indicate capability";
+
     /* FIRST CHARACTERISTIC */
 
     memset(&add_char_user_desc, 0, sizeof(ble_add_char_user_desc_t));
@@ -144,7 +152,92 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
     add_char_params.p_user_descr = &add_char_user_desc;
     add_char_params.p_presentation_format = &char_pf;
 
-    return characteristic_add(service->service_handle,
-                              &add_char_params,
-                              &service->char_2_handles);
+    error_code = characteristic_add(service->service_handle,
+                                    &add_char_params,
+                                    &service->char_2_handles);
+
+    if (error_code != NRF_SUCCESS)
+    {
+        return error_code;
+    }
+
+    /* THIRD CHARACTERICTIC */
+
+    memset(&add_char_user_desc, 0, sizeof(ble_add_char_user_desc_t));
+
+    add_char_user_desc.max_size = strlen(char_3_user_description);
+    add_char_user_desc.size = strlen(char_3_user_description);
+    add_char_user_desc.p_char_user_desc = (uint8_t *) char_3_user_description;
+    add_char_user_desc.is_value_user = false;
+    add_char_user_desc.is_var_len = false;
+    add_char_user_desc.char_props.read = 1;
+    add_char_user_desc.read_access = SEC_OPEN;
+
+    memset(&char_pf, 0, sizeof(ble_gatts_char_pf_t));
+    char_pf.format = BLE_GATT_CPF_FORMAT_UINT32;
+
+    memset(&add_char_params, 0, sizeof(ble_add_char_params_t));
+
+    add_char_params.uuid = ESTC_GATT_CHAR_3_UUID;
+    add_char_params.uuid_type = BLE_UUID_TYPE_BLE;
+    add_char_params.init_len = sizeof(uint32_t);
+    add_char_params.max_len = sizeof(uint32_t);
+    add_char_params.char_props.read = 1;
+    add_char_params.char_props.notify = 1;
+    add_char_params.is_var_len = false;
+    add_char_params.is_value_user = false;
+    add_char_params.read_access = SEC_OPEN;
+    add_char_params.cccd_write_access = SEC_OPEN;
+    add_char_params.p_user_descr = &add_char_user_desc;
+    add_char_params.p_presentation_format = &char_pf;
+
+    error_code = characteristic_add(service->service_handle,
+                                    &add_char_params,
+                                    &service->char_3_handles);
+
+    if (error_code != NRF_SUCCESS)
+    {
+        return error_code;
+    }
+
+    /* FOURTH CHARACTERICTIC */
+
+    memset(&add_char_user_desc, 0, sizeof(ble_add_char_user_desc_t));
+
+    add_char_user_desc.max_size = strlen(char_4_user_description);
+    add_char_user_desc.size = strlen(char_4_user_description);
+    add_char_user_desc.p_char_user_desc = (uint8_t *) char_4_user_description;
+    add_char_user_desc.is_value_user = false;
+    add_char_user_desc.is_var_len = false;
+    add_char_user_desc.char_props.read = 1;
+    add_char_user_desc.read_access = SEC_OPEN;
+
+    memset(&char_pf, 0, sizeof(ble_gatts_char_pf_t));
+    char_pf.format = BLE_GATT_CPF_FORMAT_UINT32;
+
+    memset(&add_char_params, 0, sizeof(ble_add_char_params_t));
+
+    add_char_params.uuid = ESTC_GATT_CHAR_4_UUID;
+    add_char_params.uuid_type = BLE_UUID_TYPE_BLE;
+    add_char_params.init_len = sizeof(uint32_t);
+    add_char_params.max_len = sizeof(uint32_t);
+    add_char_params.char_props.read = 1;
+    add_char_params.char_props.indicate = 1;
+    add_char_params.is_var_len = false;
+    add_char_params.is_value_user = false;
+    add_char_params.read_access = SEC_OPEN;
+    add_char_params.cccd_write_access = SEC_OPEN;
+    add_char_params.p_user_descr = &add_char_user_desc;
+    add_char_params.p_presentation_format = &char_pf;
+
+    error_code = characteristic_add(service->service_handle,
+                                    &add_char_params,
+                                    &service->char_4_handles);
+
+    if (error_code != NRF_SUCCESS)
+    {
+        return error_code;
+    }
+
+    return NRF_SUCCESS;
 }

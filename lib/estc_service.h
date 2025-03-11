@@ -16,6 +16,8 @@
 
 #define ESTC_GATT_CHAR_1_UUID 0xDBF3 /* read and write single-byte */
 #define ESTC_GATT_CHAR_2_UUID 0xDBF4 /* read-only two-bytes */
+#define ESTC_GATT_CHAR_3_UUID 0xDBF5 /* read-only four-bytes with notify capability */
+#define ESTC_GATT_CHAR_4_UUID 0xDBF6 /* read-only four-bytes with indicate capability */
 
 typedef struct
 {
@@ -23,6 +25,8 @@ typedef struct
     uint16_t connection_handle;
     ble_gatts_char_handles_t char_1_handles;
     ble_gatts_char_handles_t char_2_handles;
+    ble_gatts_char_handles_t char_3_handles;
+    ble_gatts_char_handles_t char_4_handles;
 } ble_estc_service_t;
 
 ret_code_t estc_ble_service_init(ble_estc_service_t *service);
