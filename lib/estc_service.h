@@ -21,8 +21,10 @@
 
 #define CHAR_1_LABEL "\e[32mCharacteristic 1\e[0m"
 #define CHAR_2_LABEL "\e[33mCharacteristic 2\e[0m"
-#define CHAR_3_LABEL "\e[34mCharacteristic 3\e[0m"
-#define CHAR_4_LABEL "\e[35mCharacteristic 4\e[0m"
+#define CHAR_3_LABEL_PRI "\e[34mHeart rate\e[0m"
+#define CHAR_3_LABEL_SEC "\e[34mbpm, Sensor contact\e[0m"
+#define CHAR_4_LABEL_PRI "\e[35mTemperature\e[0m"
+#define CHAR_4_LABEL_SEC "\e[35mDegrees\e[0m"
 
 #define CHAR_1_DESCRIPTION "Test single-byte custom characteristic "\
                            "with read and write capabilities"

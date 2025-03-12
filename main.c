@@ -108,8 +108,15 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
     app_error_handler(DEAD_BEEF, line_num, p_file_name);
 }
 
+typedef struct {
+    uint8_t heart_rate_size: 1;
+    uint8_t sensor_contact_detected: 1;
+    uint8_t sensor_contact_supported: 1;
+    uint8_t heart_rate;
+} char_3_t;
+
 volatile uint16_t char_2_value = 0;
-volatile uint8_t char_3_value[2];
+volatile char_3_t char_3_value = {0};
 volatile int16_t char_4_value = 0;
 
 static void char_2_upd_timer_handler(void *ctx)
@@ -138,26 +145,26 @@ static void char_3_upd_timer_handler(void *ctx)
     ble_estc_service_t *service = (ble_estc_service_t *) ctx;
     ble_gatts_value_t value;
 
-    char_3_value[0] = 0x04; /* 1 octet heart rate measurement value, sensor contact supported */
-    char_3_value[1] = 50 + rand() % 60;
-
-    if (char_3_value[1] >= 60)
-    {
-        char_3_value[0] |= 0x02; /* sensor contact detected */
-    }
+    char_3_value.heart_rate_size = 0;
+    char_3_value.sensor_contact_supported = 1;
+    char_3_value.heart_rate = 50 + rand() % 60;
+    char_3_value.sensor_contact_detected = (char_3_value.heart_rate >= 60);
 
     value.len = sizeof(char_3_value);
     value.offset = 0;
-    value.p_value = (uint8_t *) char_3_value;
+    value.p_value = (uint8_t *) &char_3_value;
 
     sd_ble_gatts_value_set(service->connection_handle,
                            service->char_3_handles.value_handle,
                            &value);
 
-     NRF_LOG_INFO("%s: %d (0x%02X)",
-                  CHAR_3_LABEL,
-                  char_3_value[1],
-                  char_3_value[1]);
+     NRF_LOG_INFO("%s: %d (0x%02X) %s: %s",
+                  CHAR_3_LABEL_PRI,
+                  char_3_value.heart_rate,
+                  char_3_value.heart_rate,
+                  CHAR_3_LABEL_SEC,
+                  char_3_value.sensor_contact_detected ? "Detected"
+                                                       : "Not detected");
 }
 
 static void char_4_upd_timer_handler(void *ctx)
@@ -178,10 +185,12 @@ static void char_4_upd_timer_handler(void *ctx)
                            service->char_4_handles.value_handle,
                            &value);
 
-     NRF_LOG_INFO("%s: %d (0x%04X)",
-                  CHAR_4_LABEL,
+     NRF_LOG_INFO("%s: %d.%d (0x%04X) %s",
+                  CHAR_4_LABEL_PRI,
+                  char_4_value / 10,
+                  char_4_value % 10,
                   char_4_value,
-                  char_4_value);
+                  CHAR_4_LABEL_SEC);
 }
 
 typedef enum {
@@ -212,7 +221,7 @@ static void notify_and_indicate_timer_handler(void *ctx)
 
             sd_ble_gatts_hvx(service->connection_handle, &params);
 
-            NRF_LOG_INFO("%s -> %s", CHAR_3_LABEL, NOTIFY_CAPTION);
+            NRF_LOG_INFO("%s -> %s", CHAR_3_LABEL_PRI, NOTIFY_CAPTION);
 
             message_type = msg_indicate_char_4;
             break;
@@ -227,7 +236,7 @@ static void notify_and_indicate_timer_handler(void *ctx)
 
             sd_ble_gatts_hvx(service->connection_handle, &params);
 
-            NRF_LOG_INFO("%s -> %s", CHAR_4_LABEL, INDICATE_CAPTION);
+            NRF_LOG_INFO("%s -> %s", CHAR_4_LABEL_PRI, INDICATE_CAPTION);
 
             message_type = msg_notify_char_3;
             break;
