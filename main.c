@@ -12,6 +12,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "nordic_common.h"
 #include "nrf.h"
@@ -84,7 +85,7 @@ APP_TIMER_DEF(char_2_upd_timer);
 APP_TIMER_DEF(char_3_upd_timer);
 APP_TIMER_DEF(char_4_upd_timer);
 
-#define NOTIFY_AND_INDICATE_PERIOD_MS 5000
+#define NOTIFY_AND_INDICATE_PERIOD_MS 3210
 
 APP_TIMER_DEF(notify_and_indicate_timer);
 
@@ -107,19 +108,18 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
     app_error_handler(DEAD_BEEF, line_num, p_file_name);
 }
 
-volatile uint16_t char_2_counter = 0;
-volatile uint32_t char_3_counter = 0;
-volatile uint32_t char_4_counter = 0;
+volatile uint16_t char_2_value = 0;
+volatile uint8_t char_3_value[2];
+volatile int16_t char_4_value = 0;
 
 static void char_2_upd_timer_handler(void *ctx)
 {
     ble_estc_service_t *service = (ble_estc_service_t *) ctx;
-
     ble_gatts_value_t value;
 
-    value.len = sizeof(char_2_counter);
+    value.len = sizeof(char_2_value);
     value.offset = 0;
-    value.p_value = (uint8_t *) &char_2_counter;
+    value.p_value = (uint8_t *) &char_2_value;
 
     sd_ble_gatts_value_set(service->connection_handle,
                            service->char_2_handles.value_handle,
@@ -127,54 +127,61 @@ static void char_2_upd_timer_handler(void *ctx)
 
      NRF_LOG_INFO("%s: %d (0x%04X)",
                   CHAR_2_LABEL,
-                  char_2_counter,
-                  char_2_counter);
+                  char_2_value,
+                  char_2_value);
 
-    char_2_counter++;
+    char_2_value++;
 }
 
 static void char_3_upd_timer_handler(void *ctx)
 {
     ble_estc_service_t *service = (ble_estc_service_t *) ctx;
-
     ble_gatts_value_t value;
 
-    value.len = sizeof(char_3_counter);
+    char_3_value[0] = 0x04; /* 1 octet heart rate measurement value, sensor contact supported */
+    char_3_value[1] = 50 + rand() % 60;
+
+    if (char_3_value[1] >= 60)
+    {
+        char_3_value[0] |= 0x02; /* sensor contact detected */
+    }
+
+    value.len = sizeof(char_3_value);
     value.offset = 0;
-    value.p_value = (uint8_t *) &char_3_counter;
+    value.p_value = (uint8_t *) char_3_value;
 
     sd_ble_gatts_value_set(service->connection_handle,
                            service->char_3_handles.value_handle,
                            &value);
 
-     NRF_LOG_INFO("%s: %d (0x%08X)",
+     NRF_LOG_INFO("%s: %d (0x%02X)",
                   CHAR_3_LABEL,
-                  char_3_counter,
-                  char_3_counter);
-
-    char_3_counter++;
+                  char_3_value[1],
+                  char_3_value[1]);
 }
 
 static void char_4_upd_timer_handler(void *ctx)
 {
     ble_estc_service_t *service = (ble_estc_service_t *) ctx;
-
     ble_gatts_value_t value;
 
-    value.len = sizeof(char_4_counter);
+    int32_t raw_temperature;
+
+    sd_temp_get(&raw_temperature);
+    char_4_value = (raw_temperature * 10) / 4;
+
+    value.len = sizeof(char_4_value);
     value.offset = 0;
-    value.p_value = (uint8_t *) &char_4_counter;
+    value.p_value = (uint8_t *) &char_4_value;
 
     sd_ble_gatts_value_set(service->connection_handle,
                            service->char_4_handles.value_handle,
                            &value);
 
-     NRF_LOG_INFO("%s: %d (0x%08X)",
+     NRF_LOG_INFO("%s: %d (0x%04X)",
                   CHAR_4_LABEL,
-                  char_4_counter,
-                  char_4_counter);
-
-    char_4_counter++;
+                  char_4_value,
+                  char_4_value);
 }
 
 typedef enum {
@@ -196,11 +203,11 @@ static void notify_and_indicate_timer_handler(void *ctx)
     switch (message_type)
     {
         case msg_notify_char_3:
-            len = sizeof(char_3_counter);
+            len = sizeof(char_3_value);
 
             params.type = BLE_GATT_HVX_NOTIFICATION;
             params.handle = service->char_3_handles.value_handle;
-            params.p_data = (uint8_t *) &char_3_counter;
+            params.p_data = (uint8_t *) &char_3_value;
             params.p_len = &len;
 
             sd_ble_gatts_hvx(service->connection_handle, &params);
@@ -211,11 +218,11 @@ static void notify_and_indicate_timer_handler(void *ctx)
             break;
 
         case msg_indicate_char_4:
-            len = sizeof(char_4_counter);
+            len = sizeof(char_4_value);
 
             params.type = BLE_GATT_HVX_INDICATION;
             params.handle = service->char_4_handles.value_handle;
-            params.p_data = (uint8_t *) &char_4_counter;
+            params.p_data = (uint8_t *) &char_4_value;
             params.p_len = &len;
 
             sd_ble_gatts_hvx(service->connection_handle, &params);
@@ -684,6 +691,7 @@ static void advertising_start(void)
  */
 int main(void)
 {
+    srand(DEAD_BEEF);
     // Initialize.
     log_init();
     timers_init();

@@ -163,21 +163,17 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
     add_char_user_desc.char_props.read = 1;
     add_char_user_desc.read_access = SEC_OPEN;
 
-    memset(&char_pf, 0, sizeof(ble_gatts_char_pf_t));
-    char_pf.format = BLE_GATT_CPF_FORMAT_UINT32;
-
     memset(&add_char_params, 0, sizeof(ble_add_char_params_t));
 
     add_char_params.uuid = ESTC_GATT_CHAR_3_UUID;
     add_char_params.uuid_type = BLE_UUID_TYPE_BLE;
-    add_char_params.init_len = sizeof(uint32_t);
-    add_char_params.max_len = sizeof(uint32_t);
+    add_char_params.init_len = sizeof(uint16_t);
+    add_char_params.max_len = sizeof(uint16_t);
     add_char_params.char_props.notify = 1;
     add_char_params.is_var_len = false;
     add_char_params.is_value_user = false;
     add_char_params.cccd_write_access = SEC_OPEN;
     add_char_params.p_user_descr = &add_char_user_desc;
-    add_char_params.p_presentation_format = &char_pf;
 
     error_code = characteristic_add(service->service_handle,
                                     &add_char_params,
@@ -200,21 +196,17 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
     add_char_user_desc.char_props.read = 1;
     add_char_user_desc.read_access = SEC_OPEN;
 
-    memset(&char_pf, 0, sizeof(ble_gatts_char_pf_t));
-    char_pf.format = BLE_GATT_CPF_FORMAT_UINT32;
-
     memset(&add_char_params, 0, sizeof(ble_add_char_params_t));
 
     add_char_params.uuid = ESTC_GATT_CHAR_4_UUID;
     add_char_params.uuid_type = BLE_UUID_TYPE_BLE;
-    add_char_params.init_len = sizeof(uint32_t);
-    add_char_params.max_len = sizeof(uint32_t);
+    add_char_params.init_len = sizeof(int16_t);
+    add_char_params.max_len = sizeof(int16_t);
     add_char_params.char_props.indicate = 1;
     add_char_params.is_var_len = false;
     add_char_params.is_value_user = false;
     add_char_params.cccd_write_access = SEC_OPEN;
     add_char_params.p_user_descr = &add_char_user_desc;
-    add_char_params.p_presentation_format = &char_pf;
 
     error_code = characteristic_add(service->service_handle,
                                     &add_char_params,

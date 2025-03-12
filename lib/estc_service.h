@@ -15,27 +15,27 @@
 #define ESTC_SERVICE_UUID 0xDBF2
 
 #define ESTC_GATT_CHAR_1_UUID 0xDBF3 /* read and write single-byte */
-#define ESTC_GATT_CHAR_2_UUID 0xDBF4 /* read-only two-bytes */
-#define ESTC_GATT_CHAR_3_UUID 0xDBF5 /* read-only four-bytes with notify capability */
-#define ESTC_GATT_CHAR_4_UUID 0xDBF6 /* read-only four-bytes with indicate capability */
+#define ESTC_GATT_CHAR_2_UUID 0xDBF4 /* read-only two-byte */
+#define ESTC_GATT_CHAR_3_UUID 0x2A37 /* two-byte with notify capability */
+#define ESTC_GATT_CHAR_4_UUID 0x2A1F /* two-byte with indicate capability */
 
 #define CHAR_1_LABEL "\e[32mCharacteristic 1\e[0m"
 #define CHAR_2_LABEL "\e[33mCharacteristic 2\e[0m"
 #define CHAR_3_LABEL "\e[34mCharacteristic 3\e[0m"
 #define CHAR_4_LABEL "\e[35mCharacteristic 4\e[0m"
 
-#define CHAR_1_DESCRIPTION "Test single-byte "\
-                           "custom characteristic "\
+#define CHAR_1_DESCRIPTION "Test single-byte custom characteristic "\
                            "with read and write capabilities"
-#define CHAR_2_DESCRIPTION "Test two-bytes "\
-                           "custom characteristic "\
+
+#define CHAR_2_DESCRIPTION "Test two-byte custom characteristic "\
                            "with read capability"
-#define CHAR_3_DESCRIPTION "Test four-bytes "\
-                           "custom characteristic "\
-                           "with notify capability"
-#define CHAR_4_DESCRIPTION "Test four-bytes "\
-                           "custom characteristic "\
-                           "with indicate capability"
+
+#define CHAR_3_DESCRIPTION "Test two-byte custom characteristic "\
+                           "with notify capability (heart rate)"
+
+#define CHAR_4_DESCRIPTION "Test two-byte custom characteristic "\
+                           "with indication capability "\
+                           "(temperature in Celsius degrees)"
 
 #define NOTIFY_CAPTION "\e[36mNotify\e[0m"
 #define INDICATE_CAPTION "\e[36mIndicate\e[0m"
