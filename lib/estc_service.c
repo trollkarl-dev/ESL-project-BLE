@@ -172,11 +172,9 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
     add_char_params.uuid_type = BLE_UUID_TYPE_BLE;
     add_char_params.init_len = sizeof(uint32_t);
     add_char_params.max_len = sizeof(uint32_t);
-    add_char_params.char_props.read = 1;
     add_char_params.char_props.notify = 1;
     add_char_params.is_var_len = false;
     add_char_params.is_value_user = false;
-    add_char_params.read_access = SEC_OPEN;
     add_char_params.cccd_write_access = SEC_OPEN;
     add_char_params.p_user_descr = &add_char_user_desc;
     add_char_params.p_presentation_format = &char_pf;
@@ -211,11 +209,9 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
     add_char_params.uuid_type = BLE_UUID_TYPE_BLE;
     add_char_params.init_len = sizeof(uint32_t);
     add_char_params.max_len = sizeof(uint32_t);
-    add_char_params.char_props.read = 1;
     add_char_params.char_props.indicate = 1;
     add_char_params.is_var_len = false;
     add_char_params.is_value_user = false;
-    add_char_params.read_access = SEC_OPEN;
     add_char_params.cccd_write_access = SEC_OPEN;
     add_char_params.p_user_descr = &add_char_user_desc;
     add_char_params.p_presentation_format = &char_pf;
