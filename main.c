@@ -613,18 +613,43 @@ static void led_set_color(uint8_t r, uint8_t g, uint8_t b)
 
 void on_char_1_write(const uint8_t *data, uint16_t len)
 {
+    ble_gatts_value_t value;
+    char strbuf[CHAR_3_READ_LEN + 1];
+
     if (len == 3)
     {
         led_set_color(data[0], data[1], data[2]);
+
+        snprintf(strbuf, sizeof(strbuf), CHAR_3_READ_TEMPLATE, data[0], data[1], data[2]);
+
+        value.len = strlen(strbuf);
+        value.offset = 0;
+        value.p_value = (uint8_t *) strbuf;
+
+        sd_ble_gatts_value_set(m_estc_service.connection_handle,
+                               m_estc_service.char_3_handles.value_handle,
+                               &value);
     }
 }
 
 void on_char_2_write(const uint8_t *data, uint16_t len)
 {
+    ble_gatts_value_t value;
+    char strbuf[CHAR_3_READ_LEN + 1];
+
     if (len == 1)
     {
-        (data[0] ? led_on
-                 : led_off)();
+        (data[0] ? led_on : led_off)();
+
+        snprintf(strbuf, sizeof(strbuf), CHAR_4_READ_TEMPLATE, data[0] ? "on" : "off");
+
+        value.len = strlen(strbuf);
+        value.offset = 0;
+        value.p_value = (uint8_t *) strbuf;
+
+        sd_ble_gatts_value_set(m_estc_service.connection_handle,
+                               m_estc_service.char_4_handles.value_handle,
+                               &value);
     }
 }
 

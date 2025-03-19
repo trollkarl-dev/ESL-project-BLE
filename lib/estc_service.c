@@ -72,11 +72,14 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
 {
     ble_add_char_params_t add_char_params;
     ble_add_char_user_desc_t add_char_user_desc;
+    ble_gatts_char_pf_t char_pf;
 
     ret_code_t error_code;
     
     const char char_1_user_description[] = CHAR_1_DESCRIPTION;
     const char char_2_user_description[] = CHAR_2_DESCRIPTION;
+    const char char_3_user_description[] = CHAR_3_DESCRIPTION;
+    const char char_4_user_description[] = CHAR_4_DESCRIPTION;
 
     memset(&add_char_user_desc, 0, sizeof(ble_add_char_user_desc_t));
 
@@ -94,11 +97,9 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
     add_char_params.uuid_type = BLE_UUID_TYPE_BLE;
     add_char_params.init_len = sizeof(uint8_t) * 3;
     add_char_params.max_len = sizeof(uint8_t) * 3;
-    add_char_params.char_props.read = 1;
     add_char_params.char_props.write = 1;
     add_char_params.is_var_len = false;
     add_char_params.is_value_user = false;
-    add_char_params.read_access = SEC_OPEN;
     add_char_params.write_access = SEC_OPEN;
     add_char_params.p_user_descr = &add_char_user_desc;
 
@@ -127,11 +128,9 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
     add_char_params.uuid_type = BLE_UUID_TYPE_BLE;
     add_char_params.init_len = sizeof(uint8_t);
     add_char_params.max_len = sizeof(uint8_t);
-    add_char_params.char_props.read = 1;
     add_char_params.char_props.write = 1;
     add_char_params.is_var_len = false;
     add_char_params.is_value_user = false;
-    add_char_params.read_access = SEC_OPEN;
     add_char_params.write_access = SEC_OPEN;
     add_char_params.p_user_descr = &add_char_user_desc;
 
@@ -144,7 +143,6 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
         return error_code;
     }
 
-/*
     memset(&add_char_user_desc, 0, sizeof(ble_add_char_user_desc_t));
 
     add_char_user_desc.max_size = strlen(char_3_user_description);
@@ -157,15 +155,19 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
 
     memset(&add_char_params, 0, sizeof(ble_add_char_params_t));
 
+    memset(&char_pf, 0, sizeof(ble_gatts_char_pf_t));
+    char_pf.format = BLE_GATT_CPF_FORMAT_UTF8S;
+
     add_char_params.uuid = ESTC_GATT_CHAR_3_UUID;
     add_char_params.uuid_type = BLE_UUID_TYPE_BLE;
-    add_char_params.init_len = sizeof(uint16_t);
-    add_char_params.max_len = sizeof(uint16_t);
-    add_char_params.char_props.notify = 1;
+    add_char_params.init_len = CHAR_3_READ_LEN;
+    add_char_params.max_len = CHAR_3_READ_LEN;
+    add_char_params.char_props.read = 1;
     add_char_params.is_var_len = false;
     add_char_params.is_value_user = false;
-    add_char_params.cccd_write_access = SEC_OPEN;
+    add_char_params.read_access = SEC_OPEN;
     add_char_params.p_user_descr = &add_char_user_desc;
+    add_char_params.p_presentation_format = &char_pf;
 
     error_code = characteristic_add(service->service_handle,
                                     &add_char_params,
@@ -188,15 +190,19 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
 
     memset(&add_char_params, 0, sizeof(ble_add_char_params_t));
 
+    memset(&char_pf, 0, sizeof(ble_gatts_char_pf_t));
+    char_pf.format = BLE_GATT_CPF_FORMAT_UTF8S;
+
     add_char_params.uuid = ESTC_GATT_CHAR_4_UUID;
     add_char_params.uuid_type = BLE_UUID_TYPE_BLE;
-    add_char_params.init_len = sizeof(int16_t);
-    add_char_params.max_len = sizeof(int16_t);
-    add_char_params.char_props.indicate = 1;
+    add_char_params.init_len = CHAR_4_READ_LEN;
+    add_char_params.max_len = CHAR_4_READ_LEN;
+    add_char_params.char_props.read = 1;
     add_char_params.is_var_len = false;
     add_char_params.is_value_user = false;
-    add_char_params.cccd_write_access = SEC_OPEN;
+    add_char_params.read_access = SEC_OPEN;
     add_char_params.p_user_descr = &add_char_user_desc;
+    add_char_params.p_presentation_format = &char_pf;
 
     error_code = characteristic_add(service->service_handle,
                                     &add_char_params,
@@ -207,6 +213,5 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
         return error_code;
     }
 
-*/
     return NRF_SUCCESS;
 }
