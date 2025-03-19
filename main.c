@@ -416,9 +416,6 @@ static void sleep_mode_enter(void)
 {
     ret_code_t err_code;
 
-    err_code = bsp_indication_set(BSP_INDICATE_IDLE);
-    APP_ERROR_CHECK(err_code);
-
     // Prepare wakeup buttons.
     err_code = bsp_btn_ble_sleep_mode_prepare();
     APP_ERROR_CHECK(err_code);
@@ -439,12 +436,12 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
 {
     ret_code_t err_code;
 
+    UNUSED_VARIABLE(err_code);
+
     switch (ble_adv_evt)
     {
         case BLE_ADV_EVT_FAST:
             NRF_LOG_INFO("ADV Event: Start fast advertising");
-            err_code = bsp_indication_set(BSP_INDICATE_ADVERTISING);
-            APP_ERROR_CHECK(err_code);
             break;
 
         case BLE_ADV_EVT_IDLE:
@@ -506,7 +503,6 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
         case BLE_GAP_EVT_CONNECTED:
             NRF_LOG_INFO("Connected (conn_handle: %d)", p_ble_evt->evt.gap_evt.conn_handle);
 
-            err_code = bsp_indication_set(BSP_INDICATE_CONNECTED);
             APP_ERROR_CHECK(err_code);
 
             m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
@@ -644,7 +640,7 @@ static void buttons_leds_init(void)
 {
     ret_code_t err_code;
 
-    err_code = bsp_init(BSP_INIT_LEDS | BSP_INIT_BUTTONS, bsp_event_handler);
+    err_code = bsp_init(BSP_INIT_BUTTONS, bsp_event_handler);
     APP_ERROR_CHECK(err_code);
 
     err_code = bsp_btn_ble_init(NULL, NULL);
