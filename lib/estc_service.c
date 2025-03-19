@@ -12,7 +12,9 @@ static ble_uuid128_t const m_base_uuid128 = { ESTC_BASE_UUID };
 static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service);
 
 extern ble_estc_service_t m_estc_service; 
-extern void display_char_1(uint8_t value);
+
+extern void on_char_1_write(const uint8_t *data, uint16_t len);
+extern void on_char_2_write(const uint8_t *data, uint16_t len);
 
 void estc_ble_service_on_ble_event(const ble_evt_t *ble_evt, void *ctx)
 {
@@ -22,14 +24,15 @@ void estc_ble_service_on_ble_event(const ble_evt_t *ble_evt, void *ctx)
     {
         case BLE_GATTS_EVT_WRITE:
             p_evt_write = &ble_evt->evt.gatts_evt.params.write;
+
             if (p_evt_write->handle == m_estc_service.char_1_handles.value_handle)
             {
-                display_char_1(p_evt_write->data[0]);
+                on_char_1_write(p_evt_write->data, p_evt_write->len);
+            }
 
-                NRF_LOG_INFO("%s: %d (0x%02X)",
-                             CHAR_1_LABEL,
-                             p_evt_write->data[0],
-                             p_evt_write->data[0]);
+            if (p_evt_write->handle == m_estc_service.char_2_handles.value_handle)
+            {
+                on_char_2_write(p_evt_write->data, p_evt_write->len);
             }
 
             break;
@@ -69,11 +72,11 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
 {
     ble_add_char_params_t add_char_params;
     ble_add_char_user_desc_t add_char_user_desc;
-    ble_gatts_char_pf_t char_pf;
 
     ret_code_t error_code;
     
     const char char_1_user_description[] = CHAR_1_DESCRIPTION;
+    const char char_2_user_description[] = CHAR_2_DESCRIPTION;
 
     memset(&add_char_user_desc, 0, sizeof(ble_add_char_user_desc_t));
 
@@ -85,15 +88,12 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
     add_char_user_desc.char_props.read = 1;
     add_char_user_desc.read_access = SEC_OPEN;
 
-    memset(&char_pf, 0, sizeof(ble_gatts_char_pf_t));
-    char_pf.format = BLE_GATT_CPF_FORMAT_UINT8;
-
     memset(&add_char_params, 0, sizeof(ble_add_char_params_t));
 
     add_char_params.uuid = ESTC_GATT_CHAR_1_UUID;
     add_char_params.uuid_type = BLE_UUID_TYPE_BLE;
-    add_char_params.init_len = sizeof(uint8_t);
-    add_char_params.max_len = sizeof(uint8_t);
+    add_char_params.init_len = sizeof(uint8_t) * 3;
+    add_char_params.max_len = sizeof(uint8_t) * 3;
     add_char_params.char_props.read = 1;
     add_char_params.char_props.write = 1;
     add_char_params.is_var_len = false;
@@ -101,7 +101,6 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
     add_char_params.read_access = SEC_OPEN;
     add_char_params.write_access = SEC_OPEN;
     add_char_params.p_user_descr = &add_char_user_desc;
-    add_char_params.p_presentation_format = &char_pf;
 
     error_code = characteristic_add(service->service_handle,
                                     &add_char_params,
@@ -111,7 +110,7 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
     {
         return error_code;
     }
-/*
+
     memset(&add_char_user_desc, 0, sizeof(ble_add_char_user_desc_t));
 
     add_char_user_desc.max_size = strlen(char_2_user_description);
@@ -122,21 +121,19 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
     add_char_user_desc.char_props.read = 1;
     add_char_user_desc.read_access = SEC_OPEN;
 
-    memset(&char_pf, 0, sizeof(ble_gatts_char_pf_t));
-    char_pf.format = BLE_GATT_CPF_FORMAT_UINT16;
-
     memset(&add_char_params, 0, sizeof(ble_add_char_params_t));
 
     add_char_params.uuid = ESTC_GATT_CHAR_2_UUID;
     add_char_params.uuid_type = BLE_UUID_TYPE_BLE;
-    add_char_params.init_len = sizeof(uint16_t);
-    add_char_params.max_len = sizeof(uint16_t);
+    add_char_params.init_len = sizeof(uint8_t);
+    add_char_params.max_len = sizeof(uint8_t);
     add_char_params.char_props.read = 1;
+    add_char_params.char_props.write = 1;
     add_char_params.is_var_len = false;
     add_char_params.is_value_user = false;
     add_char_params.read_access = SEC_OPEN;
+    add_char_params.write_access = SEC_OPEN;
     add_char_params.p_user_descr = &add_char_user_desc;
-    add_char_params.p_presentation_format = &char_pf;
 
     error_code = characteristic_add(service->service_handle,
                                     &add_char_params,
@@ -147,6 +144,7 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
         return error_code;
     }
 
+/*
     memset(&add_char_user_desc, 0, sizeof(ble_add_char_user_desc_t));
 
     add_char_user_desc.max_size = strlen(char_3_user_description);

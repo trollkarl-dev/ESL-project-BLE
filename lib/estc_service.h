@@ -14,18 +14,21 @@
 
 #define ESTC_SERVICE_UUID 0xDBF2
 
-#define ESTC_GATT_CHAR_1_UUID 0xDBF3 /* read and write single-byte */
+#define ESTC_GATT_CHAR_1_UUID 0xDBF3
+#define ESTC_GATT_CHAR_2_UUID 0xDBF4
 
-#define CHAR_1_LABEL "\e[32mCharacteristic 1\e[0m"
+#define CHAR_1_DESCRIPTION "Three-byte custom characteristic "\
+                           "for RGB LED color"
 
-#define CHAR_1_DESCRIPTION "Test single-byte custom characteristic "\
-                           "with read and write capabilities"
+#define CHAR_2_DESCRIPTION "One-byte custom characteristic "\
+                           "for LED on/off"
 
 typedef struct
 {
     uint16_t service_handle;
     uint16_t connection_handle;
     ble_gatts_char_handles_t char_1_handles;
+    ble_gatts_char_handles_t char_2_handles;
 } ble_estc_service_t;
 
 ret_code_t estc_ble_service_init(ble_estc_service_t *service);

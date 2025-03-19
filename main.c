@@ -143,9 +143,20 @@ static bool pwm_init(pwm_wrapper_t *pwm,
                           NULL) == NRF_SUCCESS);
 }
 
-static void pwm_run(pwm_wrapper_t *pwm)
+static void pwm_start(pwm_wrapper_t *pwm)
 {
-    nrfx_pwm_simple_playback(pwm->pwm, pwm->seq, 1, NRFX_PWM_FLAG_LOOP);
+    if (nrfx_pwm_is_stopped(pwm->pwm))
+    {
+        nrfx_pwm_simple_playback(pwm->pwm, pwm->seq, 1, NRFX_PWM_FLAG_LOOP);
+    }
+}
+
+static void pwm_stop(pwm_wrapper_t *pwm)
+{
+    if (!nrfx_pwm_is_stopped(pwm->pwm))
+    {
+        nrfx_pwm_stop(pwm->pwm, false);
+    }
 }
 
 static void pwm_set_duty_cycle(pwm_wrapper_t *pwm,
@@ -583,12 +594,38 @@ static void advertising_start(void)
     APP_ERROR_CHECK(err_code);
 }
 
-
-void display_char_1(uint8_t value)
+static void led_on(void)
 {
-    pwm_set_duty_cycle(&my_pwm,
-                       pwm_channel_indicator,
-                       ((uint16_t) value * max_pct) / 255);
+    pwm_start(&my_pwm);
+}
+
+static void led_off(void)
+{
+    pwm_stop(&my_pwm);
+}
+
+static void led_set_color(uint8_t r, uint8_t g, uint8_t b)
+{
+    pwm_set_duty_cycle(&my_pwm, pwm_channel_red, ((uint16_t) r * max_pct) / 255);
+    pwm_set_duty_cycle(&my_pwm, pwm_channel_green, ((uint16_t) g * max_pct) / 255);
+    pwm_set_duty_cycle(&my_pwm, pwm_channel_blue, ((uint16_t) b * max_pct) / 255);
+}
+
+void on_char_1_write(const uint8_t *data, uint16_t len)
+{
+    if (len == 3)
+    {
+        led_set_color(data[0], data[1], data[2]);
+    }
+}
+
+void on_char_2_write(const uint8_t *data, uint16_t len)
+{
+    if (len == 1)
+    {
+        (data[0] ? led_on
+                 : led_off)();
+    }
 }
 
 /**@brief Function for application main entry.
@@ -603,7 +640,7 @@ int main(void)
     };
 
     pwm_init(&my_pwm, channels, max_pct, true);
-    pwm_run(&my_pwm);
+    pwm_start(&my_pwm);
     pwm_set_duty_cycle(&my_pwm, pwm_channel_indicator, 0);
 
     srand(DEAD_BEEF);
