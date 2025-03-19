@@ -9,10 +9,12 @@
 
 static ble_uuid128_t const m_base_uuid128 = { ESTC_BASE_UUID };
 
-static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service);
+static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, void *ctx);
 
 extern ble_estc_service_t m_estc_service; 
 
+extern void prepare_char_3_value(char *outbuf, rgb_t color);
+extern void prepare_char_4_value(char *outbuf, uint8_t state);
 extern void on_char_1_write(const uint8_t *data, uint16_t len);
 extern void on_char_2_write(const uint8_t *data, uint16_t len);
 
@@ -47,7 +49,7 @@ void estc_update_characteristic_1_value(ble_estc_service_t *service, int32_t *va
 
 }
 
-ret_code_t estc_ble_service_init(ble_estc_service_t *service)
+ret_code_t estc_ble_service_init(ble_estc_service_t *service, void *ctx)
 {
     ret_code_t error_code;
     ble_uuid_t service_uuid = { .uuid = ESTC_SERVICE_UUID,
@@ -65,14 +67,16 @@ ret_code_t estc_ble_service_init(ble_estc_service_t *service)
     NRF_LOG_DEBUG("%s:%d | Service UUID type: 0x%02x", __FUNCTION__, __LINE__, service_uuid.type);
     NRF_LOG_DEBUG("%s:%d | Service handle: 0x%04x", __FUNCTION__, __LINE__, service->service_handle);
 
-    return estc_ble_add_characteristics(service);
+    return estc_ble_add_characteristics(service, ctx);
 }
 
-static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
+static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, void *ctx)
 {
     ble_add_char_params_t add_char_params;
     ble_add_char_user_desc_t add_char_user_desc;
     ble_gatts_char_pf_t char_pf;
+
+    led_params_t *led_params = (led_params_t *) ctx;
 
     ret_code_t error_code;
     
@@ -80,6 +84,9 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
     const char char_2_user_description[] = CHAR_2_DESCRIPTION;
     const char char_3_user_description[] = CHAR_3_DESCRIPTION;
     const char char_4_user_description[] = CHAR_4_DESCRIPTION;
+
+    static char strbuf_char_3[CHAR_3_READ_LEN + 1];
+    static char strbuf_char_4[CHAR_4_READ_LEN + 1];
 
     memset(&add_char_user_desc, 0, sizeof(ble_add_char_user_desc_t));
 
@@ -158,16 +165,19 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
     memset(&char_pf, 0, sizeof(ble_gatts_char_pf_t));
     char_pf.format = BLE_GATT_CPF_FORMAT_UTF8S;
 
+    prepare_char_3_value(strbuf_char_3, led_params->color);
+
     add_char_params.uuid = ESTC_GATT_CHAR_3_UUID;
     add_char_params.uuid_type = BLE_UUID_TYPE_BLE;
-    add_char_params.init_len = CHAR_3_READ_LEN;
-    add_char_params.max_len = CHAR_3_READ_LEN;
+    add_char_params.init_len = CHAR_3_READ_LEN - 1;
+    add_char_params.max_len = CHAR_3_READ_LEN - 1;
     add_char_params.char_props.read = 1;
     add_char_params.is_var_len = false;
     add_char_params.is_value_user = false;
     add_char_params.read_access = SEC_OPEN;
     add_char_params.p_user_descr = &add_char_user_desc;
     add_char_params.p_presentation_format = &char_pf;
+    add_char_params.p_init_value = (uint8_t *) strbuf_char_3;
 
     error_code = characteristic_add(service->service_handle,
                                     &add_char_params,
@@ -193,16 +203,19 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
     memset(&char_pf, 0, sizeof(ble_gatts_char_pf_t));
     char_pf.format = BLE_GATT_CPF_FORMAT_UTF8S;
 
+    prepare_char_4_value(strbuf_char_4, led_params->state);
+
     add_char_params.uuid = ESTC_GATT_CHAR_4_UUID;
     add_char_params.uuid_type = BLE_UUID_TYPE_BLE;
-    add_char_params.init_len = CHAR_4_READ_LEN;
-    add_char_params.max_len = CHAR_4_READ_LEN;
+    add_char_params.init_len = CHAR_4_READ_LEN - 1;
+    add_char_params.max_len = CHAR_4_READ_LEN - 1;
     add_char_params.char_props.read = 1;
     add_char_params.is_var_len = false;
     add_char_params.is_value_user = false;
     add_char_params.read_access = SEC_OPEN;
     add_char_params.p_user_descr = &add_char_user_desc;
     add_char_params.p_presentation_format = &char_pf;
+    add_char_params.p_init_value = (uint8_t *) strbuf_char_4;
 
     error_code = characteristic_add(service->service_handle,
                                     &add_char_params,

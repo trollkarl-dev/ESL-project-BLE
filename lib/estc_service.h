@@ -25,10 +25,21 @@
 #define CHAR_4_DESCRIPTION "Characteristic for reading the LED state"
 
 #define CHAR_3_READ_TEMPLATE "LED color: (R: 0x%02X, G: 0x%02X, B: 0x%02X)"
-#define CHAR_3_READ_LEN (strlen(CHAR_3_READ_TEMPLATE) - 6)
+#define CHAR_3_READ_LEN (sizeof(CHAR_3_READ_TEMPLATE) - 6)
 
 #define CHAR_4_READ_TEMPLATE "LED state: %3s"
-#define CHAR_4_READ_LEN (strlen(CHAR_3_READ_TEMPLATE))
+#define CHAR_4_READ_LEN (sizeof(CHAR_4_READ_TEMPLATE))
+
+typedef struct {
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+} rgb_t;
+
+typedef struct {
+    rgb_t color;
+    uint8_t state;
+} led_params_t;
 
 typedef struct
 {
@@ -40,7 +51,7 @@ typedef struct
     ble_gatts_char_handles_t char_4_handles;
 } ble_estc_service_t;
 
-ret_code_t estc_ble_service_init(ble_estc_service_t *service);
+ret_code_t estc_ble_service_init(ble_estc_service_t *service, void *ctx);
 void estc_ble_service_on_ble_event(const ble_evt_t *ble_evt, void *ctx);
 void estc_update_characteristic_1_value(ble_estc_service_t *service, int32_t *value);
 

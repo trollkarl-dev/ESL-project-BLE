@@ -178,6 +178,33 @@ static void pwm_set_duty_cycle(pwm_wrapper_t *pwm,
     }
 }
 
+static void led_on(void)
+{
+    pwm_start(&my_pwm);
+}
+
+static void led_off(void)
+{
+    pwm_stop(&my_pwm);
+}
+
+static void led_set_state(uint8_t state)
+{
+    (state ? led_on : led_off)();
+}
+
+static void led_set_color(rgb_t color)
+{
+    pwm_set_duty_cycle(&my_pwm, pwm_channel_red, ((uint16_t) color.r * max_pct) / 255);
+    pwm_set_duty_cycle(&my_pwm, pwm_channel_green, ((uint16_t) color.g * max_pct) / 255);
+    pwm_set_duty_cycle(&my_pwm, pwm_channel_blue, ((uint16_t) color.b * max_pct) / 255);
+}
+
+static volatile led_params_t led_params = {
+    .color = (rgb_t) {0xff, 0x00, 0xff},
+    .state = 0x01
+};
+
 static void advertising_start(void);
 
 
@@ -276,7 +303,7 @@ static void services_init(void)
     err_code = nrf_ble_qwr_init(&m_qwr, &qwr_init);
     APP_ERROR_CHECK(err_code);
 
-    err_code = estc_ble_service_init(&m_estc_service);
+    err_code = estc_ble_service_init(&m_estc_service, (led_params_t *) &led_params);
     APP_ERROR_CHECK(err_code);
 }
 
@@ -571,7 +598,6 @@ static void power_management_init(void)
     APP_ERROR_CHECK(err_code);
 }
 
-
 /**@brief Function for handling the idle state (main loop).
  *
  * @details If there is no pending log operation, then sleep until next the next event occurs.
@@ -585,7 +611,6 @@ static void idle_state_handle(void)
 	LOG_BACKEND_USB_PROCESS();
 }
 
-
 /**@brief Function for starting advertising.
  */
 static void advertising_start(void)
@@ -594,21 +619,14 @@ static void advertising_start(void)
     APP_ERROR_CHECK(err_code);
 }
 
-static void led_on(void)
+void prepare_char_3_value(char *outbuf, rgb_t color)
 {
-    pwm_start(&my_pwm);
+    snprintf(outbuf, CHAR_3_READ_LEN, CHAR_3_READ_TEMPLATE, color.r, color.g, color.b);
 }
 
-static void led_off(void)
+void prepare_char_4_value(char *outbuf, uint8_t state)
 {
-    pwm_stop(&my_pwm);
-}
-
-static void led_set_color(uint8_t r, uint8_t g, uint8_t b)
-{
-    pwm_set_duty_cycle(&my_pwm, pwm_channel_red, ((uint16_t) r * max_pct) / 255);
-    pwm_set_duty_cycle(&my_pwm, pwm_channel_green, ((uint16_t) g * max_pct) / 255);
-    pwm_set_duty_cycle(&my_pwm, pwm_channel_blue, ((uint16_t) b * max_pct) / 255);
+    snprintf(outbuf, CHAR_4_READ_LEN, CHAR_4_READ_TEMPLATE, state ? "on" : "off");
 }
 
 void on_char_1_write(const uint8_t *data, uint16_t len)
@@ -618,9 +636,11 @@ void on_char_1_write(const uint8_t *data, uint16_t len)
 
     if (len == 3)
     {
-        led_set_color(data[0], data[1], data[2]);
-
-        snprintf(strbuf, sizeof(strbuf), CHAR_3_READ_TEMPLATE, data[0], data[1], data[2]);
+        rgb_t color = *(rgb_t *) data;
+        led_params.color = color;
+        led_set_color(color);
+        
+        prepare_char_3_value(strbuf, color);
 
         value.len = strlen(strbuf);
         value.offset = 0;
@@ -639,9 +659,10 @@ void on_char_2_write(const uint8_t *data, uint16_t len)
 
     if (len == 1)
     {
-        (data[0] ? led_on : led_off)();
+        led_params.state = data[0];
+        led_set_state(data[0]);
 
-        snprintf(strbuf, sizeof(strbuf), CHAR_4_READ_TEMPLATE, data[0] ? "on" : "off");
+        prepare_char_4_value(strbuf, data[0]);
 
         value.len = strlen(strbuf);
         value.offset = 0;
@@ -686,6 +707,9 @@ int main(void)
     application_timers_start();
 
     advertising_start();
+
+    led_set_color(led_params.color);
+    led_set_state(led_params.state);
 
     // Enter main loop.
     for (;;)
