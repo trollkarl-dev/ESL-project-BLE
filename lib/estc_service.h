@@ -15,41 +15,17 @@
 #define ESTC_SERVICE_UUID 0xDBF2
 
 #define ESTC_GATT_CHAR_1_UUID 0xDBF3 /* read and write single-byte */
-#define ESTC_GATT_CHAR_2_UUID 0xDBF4 /* read-only two-byte */
-#define ESTC_GATT_CHAR_3_UUID 0x2A37 /* two-byte with notify capability */
-#define ESTC_GATT_CHAR_4_UUID 0x2A1F /* two-byte with indicate capability */
 
 #define CHAR_1_LABEL "\e[32mCharacteristic 1\e[0m"
-#define CHAR_2_LABEL "\e[33mCharacteristic 2\e[0m"
-#define CHAR_3_LABEL_PRI "\e[34mHeart rate\e[0m"
-#define CHAR_3_LABEL_SEC "\e[34mbpm, Sensor contact\e[0m"
-#define CHAR_4_LABEL_PRI "\e[35mTemperature\e[0m"
-#define CHAR_4_LABEL_SEC "\e[35mDegrees\e[0m"
 
 #define CHAR_1_DESCRIPTION "Test single-byte custom characteristic "\
                            "with read and write capabilities"
-
-#define CHAR_2_DESCRIPTION "Test two-byte custom characteristic "\
-                           "with read capability"
-
-#define CHAR_3_DESCRIPTION "Test two-byte custom characteristic "\
-                           "with notify capability (heart rate)"
-
-#define CHAR_4_DESCRIPTION "Test two-byte custom characteristic "\
-                           "with indication capability "\
-                           "(temperature in Celsius degrees)"
-
-#define NOTIFY_CAPTION "\e[36mNotify\e[0m"
-#define INDICATE_CAPTION "\e[36mIndicate\e[0m"
 
 typedef struct
 {
     uint16_t service_handle;
     uint16_t connection_handle;
     ble_gatts_char_handles_t char_1_handles;
-    ble_gatts_char_handles_t char_2_handles;
-    ble_gatts_char_handles_t char_3_handles;
-    ble_gatts_char_handles_t char_4_handles;
 } ble_estc_service_t;
 
 ret_code_t estc_ble_service_init(ble_estc_service_t *service);

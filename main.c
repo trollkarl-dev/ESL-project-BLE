@@ -80,18 +80,6 @@ static ble_uuid_t m_adv_uuids[] =                                               
 
 ble_estc_service_t m_estc_service; /**< ESTC example BLE service */
 
-#define CHAR_2_UPD_PERIOD_MS  500
-#define CHAR_3_UPD_PERIOD_MS 1000
-#define CHAR_4_UPD_PERIOD_MS 2000
-
-APP_TIMER_DEF(char_2_upd_timer);
-APP_TIMER_DEF(char_3_upd_timer);
-APP_TIMER_DEF(char_4_upd_timer);
-
-#define NOTIFY_AND_INDICATE_PERIOD_MS 3210
-
-APP_TIMER_DEF(notify_and_indicate_timer);
-
 enum { max_pct = 100 };
 
 enum {
@@ -198,144 +186,6 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
     app_error_handler(DEAD_BEEF, line_num, p_file_name);
 }
 
-typedef struct {
-    uint8_t heart_rate_size: 1;
-    uint8_t sensor_contact_detected: 1;
-    uint8_t sensor_contact_supported: 1;
-    uint8_t heart_rate;
-} char_3_t;
-
-volatile uint16_t char_2_value = 0;
-volatile char_3_t char_3_value = {0};
-volatile int16_t char_4_value = 0;
-
-static void char_2_upd_timer_handler(void *ctx)
-{
-    ble_estc_service_t *service = (ble_estc_service_t *) ctx;
-    ble_gatts_value_t value;
-
-    value.len = sizeof(char_2_value);
-    value.offset = 0;
-    value.p_value = (uint8_t *) &char_2_value;
-
-    sd_ble_gatts_value_set(service->connection_handle,
-                           service->char_2_handles.value_handle,
-                           &value);
-
-     NRF_LOG_INFO("%s: %d (0x%04X)",
-                  CHAR_2_LABEL,
-                  char_2_value,
-                  char_2_value);
-
-    char_2_value++;
-}
-
-static void char_3_upd_timer_handler(void *ctx)
-{
-    ble_estc_service_t *service = (ble_estc_service_t *) ctx;
-    ble_gatts_value_t value;
-
-    char_3_value.heart_rate_size = 0;
-    char_3_value.sensor_contact_supported = 1;
-    char_3_value.heart_rate = 50 + rand() % 60;
-    char_3_value.sensor_contact_detected = (char_3_value.heart_rate >= 60);
-
-    value.len = sizeof(char_3_value);
-    value.offset = 0;
-    value.p_value = (uint8_t *) &char_3_value;
-
-    sd_ble_gatts_value_set(service->connection_handle,
-                           service->char_3_handles.value_handle,
-                           &value);
-
-     NRF_LOG_INFO("%s: %d (0x%02X) %s: %s",
-                  CHAR_3_LABEL_PRI,
-                  char_3_value.heart_rate,
-                  char_3_value.heart_rate,
-                  CHAR_3_LABEL_SEC,
-                  char_3_value.sensor_contact_detected ? "Detected"
-                                                       : "Not detected");
-}
-
-static void char_4_upd_timer_handler(void *ctx)
-{
-    ble_estc_service_t *service = (ble_estc_service_t *) ctx;
-    ble_gatts_value_t value;
-
-    int32_t raw_temperature;
-
-    sd_temp_get(&raw_temperature);
-    char_4_value = (raw_temperature * 10) / 4;
-
-    value.len = sizeof(char_4_value);
-    value.offset = 0;
-    value.p_value = (uint8_t *) &char_4_value;
-
-    sd_ble_gatts_value_set(service->connection_handle,
-                           service->char_4_handles.value_handle,
-                           &value);
-
-     NRF_LOG_INFO("%s: %d.%d (0x%04X) %s",
-                  CHAR_4_LABEL_PRI,
-                  char_4_value / 10,
-                  char_4_value % 10,
-                  char_4_value,
-                  CHAR_4_LABEL_SEC);
-}
-
-typedef enum {
-    msg_notify_char_3,
-    msg_indicate_char_4
-} msg_t;
-
-static volatile msg_t message_type = msg_notify_char_3;
-
-static void notify_and_indicate_timer_handler(void *ctx)
-{
-    ble_estc_service_t *service = (ble_estc_service_t *) ctx;
-    ble_gatts_hvx_params_t params;
-
-    uint16_t len;
-
-    memset(&params, 0, sizeof(ble_gatts_hvx_params_t));
-
-    switch (message_type)
-    {
-        case msg_notify_char_3:
-            len = sizeof(char_3_value);
-
-            params.type = BLE_GATT_HVX_NOTIFICATION;
-            params.handle = service->char_3_handles.value_handle;
-            params.p_data = (uint8_t *) &char_3_value;
-            params.p_len = &len;
-
-            sd_ble_gatts_hvx(service->connection_handle, &params);
-
-            NRF_LOG_INFO("%s -> %s", CHAR_3_LABEL_PRI, NOTIFY_CAPTION);
-
-            message_type = msg_indicate_char_4;
-            break;
-
-        case msg_indicate_char_4:
-            len = sizeof(char_4_value);
-
-            params.type = BLE_GATT_HVX_INDICATION;
-            params.handle = service->char_4_handles.value_handle;
-            params.p_data = (uint8_t *) &char_4_value;
-            params.p_len = &len;
-
-            sd_ble_gatts_hvx(service->connection_handle, &params);
-
-            NRF_LOG_INFO("%s -> %s", CHAR_4_LABEL_PRI, INDICATE_CAPTION);
-
-            message_type = msg_notify_char_3;
-            break;
-
-        default:
-            break;
-    }
-}
-
 /**@brief Function for the Timer initialization.
  *
  * @details Initializes the timer module. This creates and starts application timers.
@@ -345,22 +195,6 @@ static void timers_init(void)
     // Initialize timer module.
     ret_code_t err_code = app_timer_init();
     APP_ERROR_CHECK(err_code);
-
-    app_timer_create(&char_2_upd_timer,
-                     APP_TIMER_MODE_REPEATED,
-                     char_2_upd_timer_handler);
-
-    app_timer_create(&char_3_upd_timer,
-                     APP_TIMER_MODE_REPEATED,
-                     char_3_upd_timer_handler);
-
-    app_timer_create(&char_4_upd_timer,
-                     APP_TIMER_MODE_REPEATED,
-                     char_4_upd_timer_handler);
-
-    app_timer_create(&notify_and_indicate_timer,
-                     APP_TIMER_MODE_REPEATED,
-                     notify_and_indicate_timer_handler);
 }
 
 
@@ -544,33 +378,6 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
     }
 }
 
-static void char_upd_timers_start(void)
-{
-    app_timer_start(char_2_upd_timer,
-                    APP_TIMER_TICKS(CHAR_2_UPD_PERIOD_MS),
-                    &m_estc_service);
-
-    app_timer_start(char_3_upd_timer,
-                    APP_TIMER_TICKS(CHAR_3_UPD_PERIOD_MS),
-                    &m_estc_service);
-
-    app_timer_start(char_4_upd_timer,
-                    APP_TIMER_TICKS(CHAR_4_UPD_PERIOD_MS),
-                    &m_estc_service);
-
-    app_timer_start(notify_and_indicate_timer,
-                    APP_TIMER_TICKS(NOTIFY_AND_INDICATE_PERIOD_MS),
-                    &m_estc_service);
-}
-
-static void char_upd_timers_stop(void)
-{
-    app_timer_stop(char_2_upd_timer);
-    app_timer_stop(char_3_upd_timer);
-    app_timer_stop(char_4_upd_timer);
-    app_timer_stop(notify_and_indicate_timer);
-}
-
 /**@brief Function for handling BLE events.
  *
  * @param[in]   p_ble_evt   Bluetooth stack event.
@@ -584,9 +391,6 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
     {
         case BLE_GAP_EVT_DISCONNECTED:
             NRF_LOG_INFO("Disconnected (conn_handle: %d)", p_ble_evt->evt.gap_evt.conn_handle);
-            // LED indication will be changed when advertising starts.
-
-            char_upd_timers_stop();
 
             break;
 
@@ -598,8 +402,6 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
             err_code = nrf_ble_qwr_conn_handle_assign(&m_qwr, m_conn_handle);
             APP_ERROR_CHECK(err_code);
-
-            char_upd_timers_start();
 
             break;
 

@@ -74,11 +74,6 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
     ret_code_t error_code;
     
     const char char_1_user_description[] = CHAR_1_DESCRIPTION;
-    const char char_2_user_description[] = CHAR_2_DESCRIPTION;
-    const char char_3_user_description[] = CHAR_3_DESCRIPTION;
-    const char char_4_user_description[] = CHAR_4_DESCRIPTION;
-
-    /* FIRST CHARACTERISTIC */
 
     memset(&add_char_user_desc, 0, sizeof(ble_add_char_user_desc_t));
 
@@ -116,9 +111,7 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
     {
         return error_code;
     }
-
-    /* SECOND CHARACTERICTIC */
-
+/*
     memset(&add_char_user_desc, 0, sizeof(ble_add_char_user_desc_t));
 
     add_char_user_desc.max_size = strlen(char_2_user_description);
@@ -154,8 +147,6 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
         return error_code;
     }
 
-    /* THIRD CHARACTERICTIC */
-
     memset(&add_char_user_desc, 0, sizeof(ble_add_char_user_desc_t));
 
     add_char_user_desc.max_size = strlen(char_3_user_description);
@@ -186,8 +177,6 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
     {
         return error_code;
     }
-
-    /* FOURTH CHARACTERICTIC */
 
     memset(&add_char_user_desc, 0, sizeof(ble_add_char_user_desc_t));
 
@@ -220,5 +209,6 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
         return error_code;
     }
 
+*/
     return NRF_SUCCESS;
 }
