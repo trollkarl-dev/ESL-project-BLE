@@ -12,6 +12,7 @@ static ble_uuid128_t const m_base_uuid128 = { ESTC_BASE_UUID };
 static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service);
 
 extern ble_estc_service_t m_estc_service; 
+extern void display_char_1(uint8_t value);
 
 void estc_ble_service_on_ble_event(const ble_evt_t *ble_evt, void *ctx)
 {
@@ -23,6 +24,8 @@ void estc_ble_service_on_ble_event(const ble_evt_t *ble_evt, void *ctx)
             p_evt_write = &ble_evt->evt.gatts_evt.params.write;
             if (p_evt_write->handle == m_estc_service.char_1_handles.value_handle)
             {
+                display_char_1(p_evt_write->data[0]);
+
                 NRF_LOG_INFO("%s: %d (0x%02X)",
                              CHAR_1_LABEL,
                              p_evt_write->data[0],

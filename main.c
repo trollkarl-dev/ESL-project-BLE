@@ -42,6 +42,9 @@
 #include "nrf_log_default_backends.h"
 #include "nrf_log_backend_usb.h"
 
+#include "nrfx_pwm.h"
+
+#include "my_board.h"
 #include "estc_service.h"
 
 #define DEVICE_NAME                     "ESTC-SVC"                              /**< Name of device. Will be included in the advertising data. */
@@ -88,6 +91,93 @@ APP_TIMER_DEF(char_4_upd_timer);
 #define NOTIFY_AND_INDICATE_PERIOD_MS 3210
 
 APP_TIMER_DEF(notify_and_indicate_timer);
+
+enum { max_pct = 100 };
+
+enum {
+    pwm_channel_indicator = my_led_first,
+    pwm_channel_red = my_led_first + 1,
+    pwm_channel_green = my_led_first + 2,
+    pwm_channel_blue = my_led_first + 3
+};
+
+static nrfx_pwm_t my_pwm_instance = NRFX_PWM_INSTANCE(0);
+static nrf_pwm_values_individual_t my_pwm_seq_values;
+static nrf_pwm_sequence_t const my_pwm_seq =
+{
+    .values.p_individual = &my_pwm_seq_values,
+    .length              = NRF_PWM_VALUES_LENGTH(my_pwm_seq_values),
+    .repeats             = 0,
+    .end_delay           = 0
+};
+
+typedef struct {
+    nrfx_pwm_t *pwm;
+    nrf_pwm_values_individual_t *seq_values;
+    nrf_pwm_sequence_t const * seq;
+} pwm_wrapper_t;
+
+static pwm_wrapper_t my_pwm =
+{
+    .pwm = &my_pwm_instance,
+    .seq_values = &my_pwm_seq_values,
+    .seq = &my_pwm_seq
+};
+
+static bool pwm_init(pwm_wrapper_t *pwm,
+                     uint8_t const *channels,
+                     uint16_t pwm_top_value,
+                     bool invert)
+{
+    int i;
+
+    nrfx_pwm_config_t my_pwm_config =
+    {
+        .irq_priority = APP_IRQ_PRIORITY_LOWEST,
+        .base_clock   = NRF_PWM_CLK_1MHz,
+        .count_mode   = NRF_PWM_MODE_UP,
+        .top_value    = pwm_top_value,
+        .load_mode    = NRF_PWM_LOAD_INDIVIDUAL,
+        .step_mode    = NRF_PWM_STEP_AUTO,
+    };
+
+    for (i = 0; i < NRF_PWM_CHANNEL_COUNT; i++)
+    {
+        my_pwm_config.output_pins[i] = channels[i];
+        if (invert)
+        {
+            my_pwm_config.output_pins[i] |= NRFX_PWM_PIN_INVERTED;
+        }
+    }
+
+    return (nrfx_pwm_init(pwm->pwm,
+                          &my_pwm_config,
+                          NULL) == NRF_SUCCESS);
+}
+
+static void pwm_run(pwm_wrapper_t *pwm)
+{
+    nrfx_pwm_simple_playback(pwm->pwm, pwm->seq, 1, NRFX_PWM_FLAG_LOOP);
+}
+
+static void pwm_set_duty_cycle(pwm_wrapper_t *pwm,
+                               uint8_t channel,
+                               uint32_t duty_cycle)
+{
+    duty_cycle %= 1 + max_pct;
+
+    switch (channel)
+    {
+        case pwm_channel_indicator:
+            pwm->seq_values->channel_0 = duty_cycle; break;
+        case pwm_channel_red:
+            pwm->seq_values->channel_1 = duty_cycle; break;
+        case pwm_channel_green:
+            pwm->seq_values->channel_2 = duty_cycle; break;
+        case pwm_channel_blue:
+            pwm->seq_values->channel_3 = duty_cycle; break;
+    }
+}
 
 static void advertising_start(void);
 
@@ -692,10 +782,28 @@ static void advertising_start(void)
 }
 
 
+void display_char_1(uint8_t value)
+{
+    pwm_set_duty_cycle(&my_pwm,
+                       pwm_channel_indicator,
+                       ((uint16_t) value * max_pct) / 255);
+}
+
 /**@brief Function for application main entry.
  */
 int main(void)
 {
+    static uint8_t channels[NRF_PWM_CHANNEL_COUNT] = {
+        my_led_mappings[pwm_channel_indicator],
+        my_led_mappings[pwm_channel_red],
+        my_led_mappings[pwm_channel_green],
+        my_led_mappings[pwm_channel_blue],
+    };
+
+    pwm_init(&my_pwm, channels, max_pct, true);
+    pwm_run(&my_pwm);
+    pwm_set_duty_cycle(&my_pwm, pwm_channel_indicator, 0);
+
     srand(DEAD_BEEF);
     // Initialize.
     log_init();
