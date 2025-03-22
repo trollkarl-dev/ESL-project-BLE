@@ -85,10 +85,12 @@ ble_estc_service_t m_estc_service; /**< ESTC example BLE service */
 APP_TIMER_DEF(notify_char_5_timer);
 APP_TIMER_DEF(notify_char_6_timer);
 
-static volatile led_params_t led_params = {
+static const led_params_t led_params_default = {
     .color = (rgb_t) {0xff, 0x00, 0xff},
     .state = 0x01
 };
+
+static volatile led_params_t led_params = led_params_default;
 
 void prepare_char_3_value(char *outbuf, rgb_t color)
 {
@@ -685,6 +687,43 @@ static void advertising_start(void)
     APP_ERROR_CHECK(err_code);
 }
 
+#define FILE_ID 0xBEEF
+#define RECORD_KEY 0xBABE
+
+void led_save_state(void)
+{
+    fds_record_desc_t record_desc;
+    fds_find_token_t record_token;
+    fds_record_t record;
+    ret_code_t ret_code;
+
+    memset(&record_token, 0, sizeof(fds_find_token_t));
+
+    record.file_id = FILE_ID;
+    record.key = RECORD_KEY;
+    record.data.p_data = (void *) &led_params;
+    record.data.length_words = sizeof(led_params_t) / 4;
+
+    if (NRF_SUCCESS == fds_record_find(FILE_ID, RECORD_KEY, &record_desc, &record_token))
+    {
+        ret_code = fds_record_update(&record_desc, &record);
+    }
+    else
+    {
+        ret_code = fds_record_write(&record_desc, &record);
+    }
+
+    if (ret_code == NRF_SUCCESS)
+    {
+        NRF_LOG_INFO("LED parameters saved to flash memory");
+    }
+    else
+    {
+        fds_gc();
+        NRF_LOG_INFO("Unable to save LED parameters!");
+    }
+}
+
 void on_char_1_write(const uint8_t *data, uint16_t len)
 {
     ble_gatts_value_t value;
@@ -696,6 +735,8 @@ void on_char_1_write(const uint8_t *data, uint16_t len)
         led_params.color = color;
         led_set_color(color);
         
+        led_save_state();
+
         prepare_char_3_value(strbuf, color);
 
         value.len = strlen(strbuf);
@@ -724,6 +765,8 @@ void on_char_2_write(const uint8_t *data, uint16_t len)
         led_params.state = data[0];
         led_set_state(data[0]);
 
+        led_save_state();
+
         prepare_char_4_value(strbuf, data[0]);
 
         value.len = strlen(strbuf);
@@ -739,6 +782,67 @@ void on_char_2_write(const uint8_t *data, uint16_t len)
         app_timer_start(notify_char_6_timer,
                         APP_TIMER_TICKS(NOTIFYING_DELAY_MS),
                         NULL);
+    }
+}
+
+void fds_events_handler(fds_evt_t const * p_evt)
+{
+    fds_record_desc_t record_desc;
+    fds_find_token_t record_token;
+    fds_record_t record;
+    fds_flash_record_t flash_record;
+
+    switch (p_evt->id)
+    {
+        case FDS_EVT_INIT:
+            /* Ready to read data from memory */
+            memset(&record_token, 0, sizeof(fds_find_token_t));
+
+            if (NRF_SUCCESS != fds_record_find(FILE_ID, RECORD_KEY, &record_desc, &record_token))
+            {
+                led_params = led_params_default;
+
+                record.file_id = FILE_ID;
+                record.key = RECORD_KEY;
+                record.data.p_data = (void *) &led_params_default;
+                record.data.length_words = sizeof(led_params_t) / 4;
+
+                if (NRF_SUCCESS != fds_record_write(&record_desc, &record))
+                {
+                    fds_gc();
+                }
+
+                NRF_LOG_INFO("Load default LED parameters");
+            }
+            else
+            {
+                if (NRF_SUCCESS == fds_record_open(&record_desc, &flash_record))
+                {
+                    led_params = *(led_params_t *) flash_record.p_data;
+
+                    NRF_LOG_INFO("Read LED parameters from flash memory");
+                }
+
+                fds_record_close(&record_desc);
+            }
+
+            led_set_color(led_params.color);
+            led_set_state(led_params.state);
+
+            break;
+
+        default:
+            break;
+    }
+}
+
+void led_save_init(void)
+{
+    fds_register(fds_events_handler);
+
+    if (NRF_SUCCESS != fds_init())
+    {
+        pwm_set_duty_cycle(&my_pwm, pwm_channel_indicator, max_pct);
     }
 }
 
@@ -758,6 +862,9 @@ int main(void)
     pwm_set_duty_cycle(&my_pwm, pwm_channel_indicator, 0);
 
     srand(DEAD_BEEF);
+
+    led_save_init();
+
     // Initialize.
     log_init();
     timers_init();
@@ -776,8 +883,6 @@ int main(void)
 
     advertising_start();
 
-    led_set_color(led_params.color);
-    led_set_state(led_params.state);
 
     // Enter main loop.
     for (;;)
