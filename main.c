@@ -695,6 +695,8 @@ void led_save_state(void)
     fds_record_desc_t record_desc;
     fds_find_token_t record_token;
     fds_record_t record;
+    fds_stat_t stat;
+
     ret_code_t ret_code;
 
     memset(&record_token, 0, sizeof(fds_find_token_t));
@@ -721,6 +723,15 @@ void led_save_state(void)
     {
         fds_gc();
         NRF_LOG_INFO("Unable to save LED parameters!");
+    }
+
+    if (NRF_SUCCESS == fds_stat(&stat))
+    {
+        NRF_LOG_INFO("FDS stat: %d valid record, %d dirty records, %d words used, %d words freeable",
+                     stat.valid_records,
+                     stat.dirty_records,
+                     stat.words_used,
+                     stat.freeable_words);
     }
 }
 
