@@ -21,8 +21,13 @@
 #define ESTC_GATT_CHAR_5_UUID 0xDBF7 /* Notify LED color */
 #define ESTC_GATT_CHAR_6_UUID 0xDBF8 /* Notify LED state */
 
-#define CHAR_1_DESCRIPTION "Three-byte characteristic for setting the LED color"
-#define CHAR_2_DESCRIPTION "One-byte characteristic for setting the LED state"
+#define CHAR_1_DESCRIPTION "Three-byte characteristic for setting the LED color. "\
+                           "Send three bytes corresponding "\
+                           "to the color components in 24-bit RGB format. "\
+                           "All colors from #000000 to #FFFFFF are valid."
+#define CHAR_2_DESCRIPTION "One-byte characteristic for setting the LED state. "\
+                           "Send zero to turn off the LED. "\
+                           "Send any non-zero number to turn on the LED."
 #define CHAR_3_DESCRIPTION "Characteristic for reading the LED color"
 #define CHAR_4_DESCRIPTION "Characteristic for reading the LED state"
 #define CHAR_5_DESCRIPTION "Characteristic for notifying the LED color"

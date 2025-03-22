@@ -796,50 +796,57 @@ void on_char_2_write(const uint8_t *data, uint16_t len)
     }
 }
 
-void fds_events_handler(fds_evt_t const * p_evt)
+void fds_on_init(void)
 {
     fds_record_desc_t record_desc;
     fds_find_token_t record_token;
     fds_record_t record;
     fds_flash_record_t flash_record;
 
+    memset(&record_token, 0, sizeof(fds_find_token_t));
+
+    if (NRF_SUCCESS != fds_record_find(FILE_ID, RECORD_KEY, &record_desc, &record_token))
+    {
+        led_params = led_params_default;
+
+        record.file_id = FILE_ID;
+        record.key = RECORD_KEY;
+        record.data.p_data = (void *) &led_params_default;
+        record.data.length_words = sizeof(led_params_t) / sizeof(uint32_t);
+
+        if (NRF_SUCCESS != fds_record_write(&record_desc, &record))
+        {
+            fds_gc();
+        }
+
+        NRF_LOG_INFO("Load default LED parameters");
+    }
+    else
+    {
+        if (NRF_SUCCESS == fds_record_open(&record_desc, &flash_record))
+        {
+            led_params = *(led_params_t *) flash_record.p_data;
+
+            NRF_LOG_INFO("Read LED parameters from flash memory");
+        }
+
+        fds_record_close(&record_desc);
+    }
+
+    led_set_color(led_params.color);
+    led_set_state(led_params.state);
+}
+
+void fds_events_handler(fds_evt_t const * p_evt)
+{
     switch (p_evt->id)
     {
         case FDS_EVT_INIT:
-            /* Ready to read data from memory */
-            memset(&record_token, 0, sizeof(fds_find_token_t));
+            fds_on_init();
+            break;
 
-            if (NRF_SUCCESS != fds_record_find(FILE_ID, RECORD_KEY, &record_desc, &record_token))
-            {
-                led_params = led_params_default;
-
-                record.file_id = FILE_ID;
-                record.key = RECORD_KEY;
-                record.data.p_data = (void *) &led_params_default;
-                record.data.length_words = sizeof(led_params_t) / 4;
-
-                if (NRF_SUCCESS != fds_record_write(&record_desc, &record))
-                {
-                    fds_gc();
-                }
-
-                NRF_LOG_INFO("Load default LED parameters");
-            }
-            else
-            {
-                if (NRF_SUCCESS == fds_record_open(&record_desc, &flash_record))
-                {
-                    led_params = *(led_params_t *) flash_record.p_data;
-
-                    NRF_LOG_INFO("Read LED parameters from flash memory");
-                }
-
-                fds_record_close(&record_desc);
-            }
-
-            led_set_color(led_params.color);
-            led_set_state(led_params.state);
-
+        case FDS_EVT_GC:
+            NRF_LOG_INFO("Garbage collection");
             break;
 
         default:
