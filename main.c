@@ -80,6 +80,68 @@ static ble_uuid_t m_adv_uuids[] =                                               
 
 ble_estc_service_t m_estc_service; /**< ESTC example BLE service */
 
+#define NOTIFYING_DELAY_MS 100
+
+APP_TIMER_DEF(notify_char_5_timer);
+APP_TIMER_DEF(notify_char_6_timer);
+
+static volatile led_params_t led_params = {
+    .color = (rgb_t) {0xff, 0x00, 0xff},
+    .state = 0x01
+};
+
+void prepare_char_3_value(char *outbuf, rgb_t color)
+{
+    snprintf(outbuf, CHAR_3_READ_LEN, CHAR_3_READ_TEMPLATE, color.r, color.g, color.b);
+}
+
+void prepare_char_4_value(char *outbuf, uint8_t state)
+{
+    snprintf(outbuf, CHAR_4_READ_LEN, CHAR_4_READ_TEMPLATE, state ? "on" : "off");
+}
+
+static void notify_char_5_timer_handler(void *ctx)
+{
+    ble_gatts_hvx_params_t hvx_params;
+
+    char strbuf[CHAR_3_READ_LEN + 1];
+    uint16_t len;
+
+    prepare_char_3_value(strbuf, led_params.color);
+    len = strlen(strbuf);
+
+    hvx_params.handle = m_estc_service.char_5_handles.value_handle;
+    hvx_params.type = BLE_GATT_HVX_NOTIFICATION;
+    hvx_params.offset = 0;
+    hvx_params.p_len = &len;
+    hvx_params.p_data = (uint8_t *) strbuf;
+
+    sd_ble_gatts_hvx(m_estc_service.connection_handle, &hvx_params);
+
+    NRF_LOG_INFO("Characteristic 5 Notify");
+}
+
+static void notify_char_6_timer_handler(void *ctx)
+{
+    ble_gatts_hvx_params_t hvx_params;
+
+    char strbuf[CHAR_4_READ_LEN + 1];
+    uint16_t len;
+
+    prepare_char_4_value(strbuf, led_params.state);
+    len = strlen(strbuf);
+
+    hvx_params.handle = m_estc_service.char_6_handles.value_handle;
+    hvx_params.type = BLE_GATT_HVX_NOTIFICATION;
+    hvx_params.offset = 0;
+    hvx_params.p_len = &len;
+    hvx_params.p_data = (uint8_t *) strbuf;
+
+    sd_ble_gatts_hvx(m_estc_service.connection_handle, &hvx_params);
+
+    NRF_LOG_INFO("Characteristic 6 Notify");
+}
+
 enum { max_pct = 100 };
 
 enum {
@@ -200,10 +262,6 @@ static void led_set_color(rgb_t color)
     pwm_set_duty_cycle(&my_pwm, pwm_channel_blue, ((uint16_t) color.b * max_pct) / 255);
 }
 
-static volatile led_params_t led_params = {
-    .color = (rgb_t) {0xff, 0x00, 0xff},
-    .state = 0x01
-};
 
 static void advertising_start(void);
 
@@ -233,6 +291,14 @@ static void timers_init(void)
     // Initialize timer module.
     ret_code_t err_code = app_timer_init();
     APP_ERROR_CHECK(err_code);
+
+    app_timer_create(&notify_char_5_timer,
+                     APP_TIMER_MODE_SINGLE_SHOT,
+                     notify_char_5_timer_handler);
+
+    app_timer_create(&notify_char_6_timer,
+                     APP_TIMER_MODE_SINGLE_SHOT,
+                     notify_char_6_timer_handler);
 }
 
 
@@ -619,16 +685,6 @@ static void advertising_start(void)
     APP_ERROR_CHECK(err_code);
 }
 
-void prepare_char_3_value(char *outbuf, rgb_t color)
-{
-    snprintf(outbuf, CHAR_3_READ_LEN, CHAR_3_READ_TEMPLATE, color.r, color.g, color.b);
-}
-
-void prepare_char_4_value(char *outbuf, uint8_t state)
-{
-    snprintf(outbuf, CHAR_4_READ_LEN, CHAR_4_READ_TEMPLATE, state ? "on" : "off");
-}
-
 void on_char_1_write(const uint8_t *data, uint16_t len)
 {
     ble_gatts_value_t value;
@@ -649,13 +705,19 @@ void on_char_1_write(const uint8_t *data, uint16_t len)
         sd_ble_gatts_value_set(m_estc_service.connection_handle,
                                m_estc_service.char_3_handles.value_handle,
                                &value);
+
+        NRF_LOG_INFO("Characteristic 1 has been updated");
+
+        app_timer_start(notify_char_5_timer,
+                        APP_TIMER_TICKS(NOTIFYING_DELAY_MS),
+                        NULL);
     }
 }
 
 void on_char_2_write(const uint8_t *data, uint16_t len)
 {
     ble_gatts_value_t value;
-    char strbuf[CHAR_3_READ_LEN + 1];
+    char strbuf[CHAR_4_READ_LEN + 1];
 
     if (len == 1)
     {
@@ -671,6 +733,12 @@ void on_char_2_write(const uint8_t *data, uint16_t len)
         sd_ble_gatts_value_set(m_estc_service.connection_handle,
                                m_estc_service.char_4_handles.value_handle,
                                &value);
+
+        NRF_LOG_INFO("Characteristic 2 has been updated");
+
+        app_timer_start(notify_char_6_timer,
+                        APP_TIMER_TICKS(NOTIFYING_DELAY_MS),
+                        NULL);
     }
 }
 

@@ -84,6 +84,8 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, void
     const char char_2_user_description[] = CHAR_2_DESCRIPTION;
     const char char_3_user_description[] = CHAR_3_DESCRIPTION;
     const char char_4_user_description[] = CHAR_4_DESCRIPTION;
+    const char char_5_user_description[] = CHAR_5_DESCRIPTION;
+    const char char_6_user_description[] = CHAR_6_DESCRIPTION;
 
     static char strbuf_char_3[CHAR_3_READ_LEN + 1];
     static char strbuf_char_4[CHAR_4_READ_LEN + 1];
@@ -226,5 +228,74 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, void
         return error_code;
     }
 
+    memset(&add_char_user_desc, 0, sizeof(ble_add_char_user_desc_t));
+
+    add_char_user_desc.max_size = strlen(char_5_user_description);
+    add_char_user_desc.size = strlen(char_5_user_description);
+    add_char_user_desc.p_char_user_desc = (uint8_t *) char_5_user_description;
+    add_char_user_desc.is_value_user = false;
+    add_char_user_desc.is_var_len = false;
+    add_char_user_desc.char_props.read = 1;
+    add_char_user_desc.read_access = SEC_OPEN;
+
+    memset(&add_char_params, 0, sizeof(ble_add_char_params_t));
+
+    memset(&char_pf, 0, sizeof(ble_gatts_char_pf_t));
+    char_pf.format = BLE_GATT_CPF_FORMAT_UTF8S;
+
+    add_char_params.uuid = ESTC_GATT_CHAR_5_UUID;
+    add_char_params.uuid_type = BLE_UUID_TYPE_BLE;
+    add_char_params.init_len = CHAR_3_READ_LEN - 1;
+    add_char_params.max_len = CHAR_3_READ_LEN - 1;
+    add_char_params.char_props.notify = 1;
+    add_char_params.is_var_len = false;
+    add_char_params.is_value_user = false;
+    add_char_params.cccd_write_access = SEC_OPEN;
+    add_char_params.p_user_descr = &add_char_user_desc;
+    add_char_params.p_presentation_format = &char_pf;
+
+    error_code = characteristic_add(service->service_handle,
+                                    &add_char_params,
+                                    &service->char_5_handles);
+
+    if (error_code != NRF_SUCCESS)
+    {
+        return error_code;
+    }
+
+    memset(&add_char_user_desc, 0, sizeof(ble_add_char_user_desc_t));
+
+    add_char_user_desc.max_size = strlen(char_6_user_description);
+    add_char_user_desc.size = strlen(char_6_user_description);
+    add_char_user_desc.p_char_user_desc = (uint8_t *) char_6_user_description;
+    add_char_user_desc.is_value_user = false;
+    add_char_user_desc.is_var_len = false;
+    add_char_user_desc.char_props.read = 1;
+    add_char_user_desc.read_access = SEC_OPEN;
+
+    memset(&add_char_params, 0, sizeof(ble_add_char_params_t));
+
+    memset(&char_pf, 0, sizeof(ble_gatts_char_pf_t));
+    char_pf.format = BLE_GATT_CPF_FORMAT_UTF8S;
+
+    add_char_params.uuid = ESTC_GATT_CHAR_6_UUID;
+    add_char_params.uuid_type = BLE_UUID_TYPE_BLE;
+    add_char_params.init_len = CHAR_4_READ_LEN - 1;
+    add_char_params.max_len = CHAR_4_READ_LEN - 1;
+    add_char_params.char_props.notify = 1;
+    add_char_params.is_var_len = false;
+    add_char_params.is_value_user = false;
+    add_char_params.cccd_write_access = SEC_OPEN;
+    add_char_params.p_user_descr = &add_char_user_desc;
+    add_char_params.p_presentation_format = &char_pf;
+
+    error_code = characteristic_add(service->service_handle,
+                                    &add_char_params,
+                                    &service->char_6_handles);
+
+    if (error_code != NRF_SUCCESS)
+    {
+        return error_code;
+    }
     return NRF_SUCCESS;
 }
