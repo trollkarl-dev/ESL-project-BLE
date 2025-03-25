@@ -46,6 +46,7 @@
 
 #include "my_board.h"
 #include "estc_service.h"
+#include "led_common.h"
 
 #define DEVICE_NAME                     "ESTC-SVC"                              /**< Name of device. Will be included in the advertising data. */
 #define MANUFACTURER_NAME               "NordicSemiconductor"                   /**< Manufacturer. Will be passed to Device Information Service. */

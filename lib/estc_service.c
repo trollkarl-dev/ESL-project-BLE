@@ -53,7 +53,7 @@ ret_code_t estc_ble_service_init(ble_estc_service_t *service, void *ctx)
 {
     ret_code_t error_code;
     ble_uuid_t service_uuid = { .uuid = ESTC_SERVICE_UUID,
-                                .type = BLE_UUID_TYPE_BLE };
+                                .type = ESTC_UUID_TYPE };
 
     error_code = sd_ble_uuid_vs_add(&m_base_uuid128, &service_uuid.type);
     APP_ERROR_CHECK(error_code);
@@ -103,7 +103,7 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, void
     memset(&add_char_params, 0, sizeof(ble_add_char_params_t));
 
     add_char_params.uuid = ESTC_GATT_CHAR_1_UUID;
-    add_char_params.uuid_type = BLE_UUID_TYPE_BLE;
+    add_char_params.uuid_type = ESTC_UUID_TYPE;
     add_char_params.init_len = sizeof(uint8_t) * 3;
     add_char_params.max_len = sizeof(uint8_t) * 3;
     add_char_params.char_props.write = 1;
@@ -134,7 +134,7 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, void
     memset(&add_char_params, 0, sizeof(ble_add_char_params_t));
 
     add_char_params.uuid = ESTC_GATT_CHAR_2_UUID;
-    add_char_params.uuid_type = BLE_UUID_TYPE_BLE;
+    add_char_params.uuid_type = ESTC_UUID_TYPE;
     add_char_params.init_len = sizeof(uint8_t);
     add_char_params.max_len = sizeof(uint8_t);
     add_char_params.char_props.write = 1;
@@ -170,7 +170,7 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, void
     prepare_char_3_value(strbuf_char_3, led_params->color);
 
     add_char_params.uuid = ESTC_GATT_CHAR_3_UUID;
-    add_char_params.uuid_type = BLE_UUID_TYPE_BLE;
+    add_char_params.uuid_type = ESTC_UUID_TYPE;
     add_char_params.init_len = CHAR_3_READ_LEN - 1;
     add_char_params.max_len = CHAR_3_READ_LEN - 1;
     add_char_params.char_props.read = 1;
@@ -208,7 +208,7 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, void
     prepare_char_4_value(strbuf_char_4, led_params->state);
 
     add_char_params.uuid = ESTC_GATT_CHAR_4_UUID;
-    add_char_params.uuid_type = BLE_UUID_TYPE_BLE;
+    add_char_params.uuid_type = ESTC_UUID_TYPE;
     add_char_params.init_len = CHAR_4_READ_LEN - 1;
     add_char_params.max_len = CHAR_4_READ_LEN - 1;
     add_char_params.char_props.read = 1;
@@ -244,7 +244,7 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, void
     char_pf.format = BLE_GATT_CPF_FORMAT_UTF8S;
 
     add_char_params.uuid = ESTC_GATT_CHAR_5_UUID;
-    add_char_params.uuid_type = BLE_UUID_TYPE_BLE;
+    add_char_params.uuid_type = ESTC_UUID_TYPE;
     add_char_params.init_len = CHAR_3_READ_LEN - 1;
     add_char_params.max_len = CHAR_3_READ_LEN - 1;
     add_char_params.char_props.notify = 1;
@@ -279,7 +279,7 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, void
     char_pf.format = BLE_GATT_CPF_FORMAT_UTF8S;
 
     add_char_params.uuid = ESTC_GATT_CHAR_6_UUID;
-    add_char_params.uuid_type = BLE_UUID_TYPE_BLE;
+    add_char_params.uuid_type = ESTC_UUID_TYPE;
     add_char_params.init_len = CHAR_4_READ_LEN - 1;
     add_char_params.max_len = CHAR_4_READ_LEN - 1;
     add_char_params.char_props.notify = 1;
