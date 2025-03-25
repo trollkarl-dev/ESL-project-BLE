@@ -109,7 +109,7 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, void
     add_char_params.char_props.write = 1;
     add_char_params.is_var_len = false;
     add_char_params.is_value_user = false;
-    add_char_params.write_access = SEC_OPEN;
+    add_char_params.write_access = SEC_JUST_WORKS;
     add_char_params.p_user_descr = &add_char_user_desc;
 
     error_code = characteristic_add(service->service_handle,
@@ -140,7 +140,7 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, void
     add_char_params.char_props.write = 1;
     add_char_params.is_var_len = false;
     add_char_params.is_value_user = false;
-    add_char_params.write_access = SEC_OPEN;
+    add_char_params.write_access = SEC_JUST_WORKS;
     add_char_params.p_user_descr = &add_char_user_desc;
 
     error_code = characteristic_add(service->service_handle,
@@ -250,7 +250,7 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, void
     add_char_params.char_props.notify = 1;
     add_char_params.is_var_len = false;
     add_char_params.is_value_user = false;
-    add_char_params.cccd_write_access = SEC_OPEN;
+    add_char_params.cccd_write_access = SEC_JUST_WORKS;
     add_char_params.p_user_descr = &add_char_user_desc;
     add_char_params.p_presentation_format = &char_pf;
 
@@ -285,7 +285,7 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, void
     add_char_params.char_props.notify = 1;
     add_char_params.is_var_len = false;
     add_char_params.is_value_user = false;
-    add_char_params.cccd_write_access = SEC_OPEN;
+    add_char_params.cccd_write_access = SEC_JUST_WORKS;
     add_char_params.p_user_descr = &add_char_user_desc;
     add_char_params.p_presentation_format = &char_pf;
 

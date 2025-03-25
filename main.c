@@ -266,7 +266,7 @@ static void led_set_color(rgb_t color)
 }
 
 
-static void advertising_start(void);
+static void advertising_start(bool erase_bonds);
 
 
 /**@brief Callback function for asserts in the SoftDevice.
@@ -597,6 +597,18 @@ static void bsp_event_handler(bsp_event_t event)
                 APP_ERROR_CHECK(err_code);
             }
             break; // BSP_EVENT_DISCONNECT
+
+        case BSP_EVENT_WHITELIST_OFF:
+            if (m_conn_handle == BLE_CONN_HANDLE_INVALID)
+            {
+                err_code = ble_advertising_restart_without_whitelist(&m_advertising);
+                if (err_code != NRF_ERROR_INVALID_STATE)
+                {
+                    APP_ERROR_CHECK(err_code);
+                }
+            }
+            break; // BSP_EVENT_KEY_0
+
         default:
             break;
     }
@@ -632,8 +644,6 @@ static void advertising_init(void)
 
 
 /**@brief Function for initializing buttons and leds.
- *
- * @param[out] p_erase_bonds  Will be true if the clear bonding button was pressed to wake the application up.
  */
 static void buttons_leds_init(void)
 {
@@ -645,7 +655,6 @@ static void buttons_leds_init(void)
     err_code = bsp_btn_ble_init(NULL, NULL);
     APP_ERROR_CHECK(err_code);
 }
-
 
 /**@brief Function for initializing the nrf log module.
  */
@@ -680,12 +689,33 @@ static void idle_state_handle(void)
 	LOG_BACKEND_USB_PROCESS();
 }
 
+/**@brief Clear bond information from persistent storage.
+ */
+static void delete_bonds(void)
+{
+    ret_code_t err_code;
+
+    NRF_LOG_INFO("Erase bonds!");
+
+    err_code = pm_peers_delete();
+    APP_ERROR_CHECK(err_code);
+}
+
 /**@brief Function for starting advertising.
  */
-static void advertising_start(void)
+static void advertising_start(bool erase_bonds)
 {
-    ret_code_t err_code = ble_advertising_start(&m_advertising, BLE_ADV_MODE_FAST);
-    APP_ERROR_CHECK(err_code);
+    if (erase_bonds == true)
+    {
+        delete_bonds();
+        // Advertising is started by PM_EVT_PEERS_DELETED_SUCEEDED event
+    }
+    else
+    {
+        ret_code_t err_code = ble_advertising_start(&m_advertising, BLE_ADV_MODE_FAST);
+
+        APP_ERROR_CHECK(err_code);
+    }
 }
 
 #define FILE_ID 0xBEEF
@@ -865,6 +895,65 @@ void led_save_init(void)
     }
 }
 
+/**@brief Function for handling Peer Manager events.
+ *
+ * @param[in] p_evt  Peer Manager event.
+ */
+static void pm_evt_handler(pm_evt_t const * p_evt)
+{
+    pm_handler_on_pm_evt(p_evt);
+    pm_handler_disconnect_on_sec_failure(p_evt);
+    pm_handler_flash_clean(p_evt);
+
+    switch (p_evt->evt_id)
+    {
+        case PM_EVT_PEERS_DELETE_SUCCEEDED:
+            advertising_start(false);
+            break;
+
+        default:
+            break;
+    }
+}
+
+/**@brief Function for the Peer Manager initialization.
+ */
+static void peer_manager_init(bool erase_bonds)
+{
+    ble_gap_sec_params_t sec_param;
+    ret_code_t           err_code;
+
+    err_code = pm_init();
+    APP_ERROR_CHECK(err_code);
+
+    if (erase_bonds)
+    {
+        pm_peers_delete();
+    }
+
+    memset(&sec_param, 0, sizeof(ble_gap_sec_params_t));
+
+    // Security parameters to be used for all security procedures.
+    sec_param.bond           = false;
+    sec_param.mitm           = false;
+    sec_param.lesc           = 0;
+    sec_param.keypress       = 0;
+    sec_param.io_caps        = BLE_GAP_IO_CAPS_NONE;
+    sec_param.oob            = false;
+    sec_param.min_key_size   = 7;
+    sec_param.max_key_size   = 16;
+    sec_param.kdist_own.enc  = 0;
+    sec_param.kdist_own.id   = 0;
+    sec_param.kdist_peer.enc = 0;
+    sec_param.kdist_peer.id  = 0;
+
+    err_code = pm_sec_params_set(&sec_param);
+    APP_ERROR_CHECK(err_code);
+
+    err_code = pm_register(pm_evt_handler);
+    APP_ERROR_CHECK(err_code);
+}
+
 /**@brief Function for application main entry.
  */
 int main(void)
@@ -895,12 +984,13 @@ int main(void)
     services_init();
     advertising_init();
     conn_params_init();
+    peer_manager_init(true);
 
     // Start execution.
     NRF_LOG_INFO("ESTC GATT service example started");
     application_timers_start();
 
-    advertising_start();
+    advertising_start(false);
 
 
     // Enter main loop.
