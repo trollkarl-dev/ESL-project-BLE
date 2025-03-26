@@ -371,7 +371,7 @@ static void services_init(void)
     err_code = nrf_ble_qwr_init(&m_qwr, &qwr_init);
     APP_ERROR_CHECK(err_code);
 
-    err_code = estc_ble_service_init(&m_estc_service, (led_params_t *) &led_params);
+    err_code = estc_ble_service_init(&m_estc_service, NULL);
     APP_ERROR_CHECK(err_code);
 }
 
@@ -478,6 +478,9 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
     }
 }
 
+void on_char_1_write(const uint8_t *data, uint16_t len, bool notify, bool save_to_flash);
+void on_char_2_write(const uint8_t *data, uint16_t len, bool notify, bool save_to_flash);
+
 /**@brief Function for handling BLE events.
  *
  * @param[in]   p_ble_evt   Bluetooth stack event.
@@ -495,6 +498,9 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             break;
 
         case BLE_GAP_EVT_CONNECTED:
+            on_char_1_write((uint8_t *) &(led_params.color), 3, false, false);
+            on_char_2_write((uint8_t *) &(led_params.state), 1, false, false);
+
             NRF_LOG_INFO("Connected (conn_handle: %d)", p_ble_evt->evt.gap_evt.conn_handle);
 
             APP_ERROR_CHECK(err_code);
@@ -760,7 +766,7 @@ void led_save_state(void)
     display_storage_state();
 }
 
-void on_char_1_write(const uint8_t *data, uint16_t len)
+void on_char_1_write(const uint8_t *data, uint16_t len, bool notify, bool save_to_flash)
 {
     ble_gatts_value_t value;
     char strbuf[CHAR_3_READ_LEN + 1];
@@ -771,7 +777,10 @@ void on_char_1_write(const uint8_t *data, uint16_t len)
         led_params.color = color;
         led_set_color(color);
         
-        led_save_state();
+        if (save_to_flash)
+        {
+            led_save_state();
+        }
 
         prepare_char_3_value(strbuf, color);
 
@@ -785,13 +794,16 @@ void on_char_1_write(const uint8_t *data, uint16_t len)
 
         NRF_LOG_INFO("Characteristic 1 has been updated");
 
-        app_timer_start(notify_char_5_timer,
-                        APP_TIMER_TICKS(NOTIFYING_DELAY_MS),
-                        NULL);
+        if (notify)
+        {
+            app_timer_start(notify_char_5_timer,
+                            APP_TIMER_TICKS(NOTIFYING_DELAY_MS),
+                            NULL);
+        }
     }
 }
 
-void on_char_2_write(const uint8_t *data, uint16_t len)
+void on_char_2_write(const uint8_t *data, uint16_t len, bool notify, bool save_to_flash)
 {
     ble_gatts_value_t value;
     char strbuf[CHAR_4_READ_LEN + 1];
@@ -801,7 +813,10 @@ void on_char_2_write(const uint8_t *data, uint16_t len)
         led_params.state = data[0];
         led_set_state(data[0]);
 
-        led_save_state();
+        if (save_to_flash)
+        {
+            led_save_state();
+        }
 
         prepare_char_4_value(strbuf, data[0]);
 
@@ -815,9 +830,12 @@ void on_char_2_write(const uint8_t *data, uint16_t len)
 
         NRF_LOG_INFO("Characteristic 2 has been updated");
 
-        app_timer_start(notify_char_6_timer,
-                        APP_TIMER_TICKS(NOTIFYING_DELAY_MS),
-                        NULL);
+        if (notify)
+        {
+            app_timer_start(notify_char_6_timer,
+                            APP_TIMER_TICKS(NOTIFYING_DELAY_MS),
+                            NULL);
+        }
     }
 }
 
@@ -825,37 +843,19 @@ void fds_on_init(void)
 {
     fds_record_desc_t record_desc;
     fds_find_token_t record_token;
-    fds_record_t record;
     fds_flash_record_t flash_record;
 
     memset(&record_token, 0, sizeof(fds_find_token_t));
 
-    if (NRF_SUCCESS != fds_record_find(FILE_ID, RECORD_KEY, &record_desc, &record_token))
-    {
-        led_params = led_params_default;
-
-        record.file_id = FILE_ID;
-        record.key = RECORD_KEY;
-        record.data.p_data = (void *) &led_params_default;
-        record.data.length_words = sizeof(led_params_t) / sizeof(uint32_t);
-
-        if (NRF_SUCCESS != fds_record_write(&record_desc, &record))
-        {
-            fds_gc();
-        }
-
-        NRF_LOG_INFO("Load default LED parameters");
-    }
-    else
+    if (NRF_SUCCESS == fds_record_find(FILE_ID, RECORD_KEY, &record_desc, &record_token))
     {
         if (NRF_SUCCESS == fds_record_open(&record_desc, &flash_record))
         {
             led_params = *(led_params_t *) flash_record.p_data;
+            fds_record_close(&record_desc);
 
             NRF_LOG_INFO("Read LED parameters from flash memory");
         }
-
-        fds_record_close(&record_desc);
     }
 
     led_set_color(led_params.color);
