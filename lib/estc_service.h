@@ -29,12 +29,17 @@
                            "Send three bytes corresponding "\
                            "to the color components in 24-bit RGB format. "\
                            "All colors from #000000 to #FFFFFF are valid."
+
 #define CHAR_2_DESCRIPTION "One-byte characteristic for setting the LED state. "\
                            "Send zero to turn off the LED. "\
                            "Send any non-zero number to turn on the LED."
+
 #define CHAR_3_DESCRIPTION "Characteristic for reading the LED color"
+
 #define CHAR_4_DESCRIPTION "Characteristic for reading the LED state"
+
 #define CHAR_5_DESCRIPTION "Characteristic for notifying the LED color"
+
 #define CHAR_6_DESCRIPTION "Characteristic for notifying the LED state"
 
 #define CHAR_3_READ_TEMPLATE "LED color: #%02X%02X%02X"
@@ -57,6 +62,5 @@ typedef struct
 
 ret_code_t estc_ble_service_init(ble_estc_service_t *service, void *ctx);
 void estc_ble_service_on_ble_event(const ble_evt_t *ble_evt, void *ctx);
-void estc_update_characteristic_1_value(ble_estc_service_t *service, int32_t *value);
 
 #endif /* ESTC_SERVICE_H__ */

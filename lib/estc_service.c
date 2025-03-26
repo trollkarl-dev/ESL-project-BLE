@@ -15,38 +15,36 @@ extern ble_estc_service_t m_estc_service;
 
 extern void prepare_char_3_value(char *outbuf, rgb_t color);
 extern void prepare_char_4_value(char *outbuf, uint8_t state);
+
 extern void on_char_1_write(const uint8_t *data, uint16_t len);
 extern void on_char_2_write(const uint8_t *data, uint16_t len);
 
+static void on_write(const ble_evt_t *ble_evt)
+{
+    const ble_gatts_evt_write_t * p_evt_write = &ble_evt->evt.gatts_evt.params.write;
+
+    if (p_evt_write->handle == m_estc_service.char_1_handles.value_handle)
+    {
+        on_char_1_write(p_evt_write->data, p_evt_write->len);
+    }
+
+    if (p_evt_write->handle == m_estc_service.char_2_handles.value_handle)
+    {
+        on_char_2_write(p_evt_write->data, p_evt_write->len);
+    }
+}
+
 void estc_ble_service_on_ble_event(const ble_evt_t *ble_evt, void *ctx)
 {
-    const ble_gatts_evt_write_t * p_evt_write;
-
     switch (ble_evt->header.evt_id)
     {
         case BLE_GATTS_EVT_WRITE:
-            p_evt_write = &ble_evt->evt.gatts_evt.params.write;
-
-            if (p_evt_write->handle == m_estc_service.char_1_handles.value_handle)
-            {
-                on_char_1_write(p_evt_write->data, p_evt_write->len);
-            }
-
-            if (p_evt_write->handle == m_estc_service.char_2_handles.value_handle)
-            {
-                on_char_2_write(p_evt_write->data, p_evt_write->len);
-            }
-
+            on_write(ble_evt);
             break;
         
         default:
             break;
     }
-}
-
-void estc_update_characteristic_1_value(ble_estc_service_t *service, int32_t *value)
-{
-
 }
 
 ret_code_t estc_ble_service_init(ble_estc_service_t *service, void *ctx)

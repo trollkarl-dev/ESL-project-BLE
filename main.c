@@ -1,14 +1,3 @@
-/** @file
- *
- * @defgroup estc_gatt main.c
- * @{
- * @ingroup estc_templates
- * @brief ESTC-GATT project file.
- *
- * This file contains a template for creating a new BLE application with GATT services. It has
- * the code necessary to advertise, get a connection, restart advertising on disconnect.
- */
-
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
@@ -48,7 +37,7 @@
 #include "estc_service.h"
 #include "led_common.h"
 
-#define DEVICE_NAME                     "ESTC-SVC"                              /**< Name of device. Will be included in the advertising data. */
+#define DEVICE_NAME                     "Custom LED controller"                 /**< Name of device. Will be included in the advertising data. */
 #define MANUFACTURER_NAME               "NordicSemiconductor"                   /**< Manufacturer. Will be passed to Device Information Service. */
 #define APP_ADV_INTERVAL                300                                     /**< The advertising interval (in units of 0.625 ms. This value corresponds to 187.5 ms). */
 
@@ -85,6 +74,27 @@ ble_estc_service_t m_estc_service; /**< ESTC example BLE service */
 
 APP_TIMER_DEF(notify_char_5_timer);
 APP_TIMER_DEF(notify_char_6_timer);
+
+#define GC_PERIOD_MS 60000UL
+
+APP_TIMER_DEF(gc_timer);
+
+static void gc_timer_handler(void *ctx)
+{
+    ret_code_t ret_code = fds_gc();
+
+    switch (ret_code)
+    {
+        case NRF_SUCCESS:
+            NRF_LOG_INFO("Trigger garbage collection");
+            break;
+
+        default:
+            NRF_LOG_ERROR("Unable to trigger garbage collection!");
+            break;
+    }
+}
+
 
 static const led_params_t led_params_default = {
     .color = (rgb_t) {0xff, 0x00, 0xff},
@@ -243,19 +253,9 @@ static void pwm_set_duty_cycle(pwm_wrapper_t *pwm,
     }
 }
 
-static void led_on(void)
-{
-    pwm_start(&my_pwm);
-}
-
-static void led_off(void)
-{
-    pwm_stop(&my_pwm);
-}
-
 static void led_set_state(uint8_t state)
 {
-    (state ? led_on : led_off)();
+    (state ? pwm_start : pwm_stop)(&my_pwm);
 }
 
 static void led_set_color(rgb_t color)
@@ -265,9 +265,7 @@ static void led_set_color(rgb_t color)
     pwm_set_duty_cycle(&my_pwm, pwm_channel_blue, ((uint16_t) color.b * max_pct) / 255);
 }
 
-
 static void advertising_start(bool erase_bonds);
-
 
 /**@brief Callback function for asserts in the SoftDevice.
  *
@@ -302,8 +300,11 @@ static void timers_init(void)
     app_timer_create(&notify_char_6_timer,
                      APP_TIMER_MODE_SINGLE_SHOT,
                      notify_char_6_timer_handler);
-}
 
+    app_timer_create(&gc_timer,
+                     APP_TIMER_MODE_REPEATED,
+                     gc_timer_handler);
+}
 
 /**@brief Function for the GAP initialization.
  *
@@ -337,7 +338,6 @@ static void gap_params_init(void)
     APP_ERROR_CHECK(err_code);
 }
 
-
 /**@brief Function for initializing the GATT module.
  */
 static void gatt_init(void)
@@ -345,7 +345,6 @@ static void gatt_init(void)
     ret_code_t err_code = nrf_ble_gatt_init(&m_gatt, NULL);
     APP_ERROR_CHECK(err_code);
 }
-
 
 /**@brief Function for handling Queued Write Module errors.
  *
@@ -376,7 +375,6 @@ static void services_init(void)
     APP_ERROR_CHECK(err_code);
 }
 
-
 /**@brief Function for handling the Connection Parameters Module.
  *
  * @details This function will be called for all events in the Connection Parameters Module which
@@ -398,7 +396,6 @@ static void on_conn_params_evt(ble_conn_params_evt_t * p_evt)
     }
 }
 
-
 /**@brief Function for handling a Connection Parameters error.
  *
  * @param[in] nrf_error  Error code containing information about what went wrong.
@@ -407,7 +404,6 @@ static void conn_params_error_handler(uint32_t nrf_error)
 {
     APP_ERROR_HANDLER(nrf_error);
 }
-
 
 /**@brief Function for initializing the Connection Parameters module.
  */
@@ -431,13 +427,11 @@ static void conn_params_init(void)
     APP_ERROR_CHECK(err_code);
 }
 
-
 /**@brief Function for starting timers.
  */
 static void application_timers_start(void)
 {
 }
-
 
 /**@brief Function for putting the chip into sleep mode.
  *
@@ -455,7 +449,6 @@ static void sleep_mode_enter(void)
     err_code = sd_power_system_off();
     APP_ERROR_CHECK(err_code);
 }
-
 
 /**@brief Function for handling advertising events.
  *
@@ -548,7 +541,6 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
     estc_ble_service_on_ble_event(p_ble_evt, p_context);
 }
 
-
 /**@brief Function for initializing the BLE stack.
  *
  * @details Initializes the SoftDevice and the BLE event interrupt.
@@ -573,7 +565,6 @@ static void ble_stack_init(void)
     // Register a handler for BLE events.
     NRF_SDH_BLE_OBSERVER(m_ble_observer, APP_BLE_OBSERVER_PRIO, ble_evt_handler, NULL);
 }
-
 
 /**@brief Function for handling events from the BSP module.
  *
@@ -614,7 +605,6 @@ static void bsp_event_handler(bsp_event_t event)
     }
 }
 
-
 /**@brief Function for initializing the Advertising functionality.
  */
 static void advertising_init(void)
@@ -642,10 +632,9 @@ static void advertising_init(void)
     ble_advertising_conn_cfg_tag_set(&m_advertising, APP_BLE_CONN_CFG_TAG);
 }
 
-
 /**@brief Function for initializing buttons and leds.
  */
-static void buttons_leds_init(void)
+static void button_init(void)
 {
     ret_code_t err_code;
 
@@ -665,7 +654,6 @@ static void log_init(void)
 
     NRF_LOG_DEFAULT_BACKENDS_INIT();
 }
-
 
 /**@brief Function for initializing power management.
  */
@@ -721,12 +709,25 @@ static void advertising_start(bool erase_bonds)
 #define FILE_ID 0xBEEF
 #define RECORD_KEY 0xBABE
 
+static void display_storage_state(void)
+{
+    fds_stat_t stat;
+
+    if (NRF_SUCCESS == fds_stat(&stat))
+    {
+        NRF_LOG_INFO("\e[32mFDS stat\e[0m: %d valid record, %d dirty records, %d words used, %d words freeable",
+                     stat.valid_records,
+                     stat.dirty_records,
+                     stat.words_used,
+                     stat.freeable_words);
+    }
+}
+
 void led_save_state(void)
 {
     fds_record_desc_t record_desc;
     fds_find_token_t record_token;
     fds_record_t record;
-    fds_stat_t stat;
 
     ret_code_t ret_code;
 
@@ -756,14 +757,7 @@ void led_save_state(void)
         NRF_LOG_INFO("Unable to save LED parameters!");
     }
 
-    if (NRF_SUCCESS == fds_stat(&stat))
-    {
-        NRF_LOG_INFO("FDS stat: %d valid record, %d dirty records, %d words used, %d words freeable",
-                     stat.valid_records,
-                     stat.dirty_records,
-                     stat.words_used,
-                     stat.freeable_words);
-    }
+    display_storage_state();
 }
 
 void on_char_1_write(const uint8_t *data, uint16_t len)
@@ -866,6 +860,8 @@ void fds_on_init(void)
 
     led_set_color(led_params.color);
     led_set_state(led_params.state);
+
+    app_timer_start(gc_timer, APP_TIMER_TICKS(GC_PERIOD_MS), NULL);
 }
 
 void fds_events_handler(fds_evt_t const * p_evt)
@@ -877,7 +873,8 @@ void fds_events_handler(fds_evt_t const * p_evt)
             break;
 
         case FDS_EVT_GC:
-            NRF_LOG_INFO("Garbage collection");
+            NRF_LOG_INFO("Garbage collection is done");
+            display_storage_state();
             break;
 
         default:
@@ -976,7 +973,7 @@ int main(void)
     // Initialize.
     log_init();
     timers_init();
-    buttons_leds_init();
+    button_init();
     power_management_init();
     ble_stack_init();
     gap_params_init();
@@ -987,11 +984,10 @@ int main(void)
     peer_manager_init(true);
 
     // Start execution.
-    NRF_LOG_INFO("ESTC GATT service example started");
+    NRF_LOG_INFO("ESTC custom LED service started");
     application_timers_start();
 
     advertising_start(false);
-
 
     // Enter main loop.
     for (;;)
@@ -999,7 +995,6 @@ int main(void)
         idle_state_handle();
     }
 }
-
 
 /**
  * @}
