@@ -31,8 +31,7 @@
 #include "nrf_log_default_backends.h"
 #include "nrf_log_backend_usb.h"
 
-#include "nrfx_pwm.h"
-
+#include "pwm_wrap.h"
 #include "my_board.h"
 #include "estc_service.h"
 #include "led_common.h"
@@ -129,13 +128,11 @@ static void notify_led_timer_handler(void *ctx)
     NRF_LOG_INFO("Characteristic 5 Notify");
 }
 
-enum { max_pct = 100 };
-
 enum {
     pwm_channel_indicator = my_led_first,
-    pwm_channel_red = my_led_first + 1,
-    pwm_channel_green = my_led_first + 2,
-    pwm_channel_blue = my_led_first + 3
+    pwm_channel_red,
+    pwm_channel_green,
+    pwm_channel_blue
 };
 
 static nrfx_pwm_t my_pwm_instance = NRFX_PWM_INSTANCE(0);
@@ -148,84 +145,12 @@ static nrf_pwm_sequence_t const my_pwm_seq =
     .end_delay           = 0
 };
 
-typedef struct {
-    nrfx_pwm_t *pwm;
-    nrf_pwm_values_individual_t *seq_values;
-    nrf_pwm_sequence_t const * seq;
-} pwm_wrapper_t;
-
 static pwm_wrapper_t my_pwm =
 {
     .pwm = &my_pwm_instance,
     .seq_values = &my_pwm_seq_values,
     .seq = &my_pwm_seq
 };
-
-static bool pwm_init(pwm_wrapper_t *pwm,
-                     uint8_t const *channels,
-                     uint16_t pwm_top_value,
-                     bool invert)
-{
-    int i;
-
-    nrfx_pwm_config_t my_pwm_config =
-    {
-        .irq_priority = APP_IRQ_PRIORITY_LOWEST,
-        .base_clock   = NRF_PWM_CLK_1MHz,
-        .count_mode   = NRF_PWM_MODE_UP,
-        .top_value    = pwm_top_value,
-        .load_mode    = NRF_PWM_LOAD_INDIVIDUAL,
-        .step_mode    = NRF_PWM_STEP_AUTO,
-    };
-
-    for (i = 0; i < NRF_PWM_CHANNEL_COUNT; i++)
-    {
-        my_pwm_config.output_pins[i] = channels[i];
-        if (invert)
-        {
-            my_pwm_config.output_pins[i] |= NRFX_PWM_PIN_INVERTED;
-        }
-    }
-
-    return (nrfx_pwm_init(pwm->pwm,
-                          &my_pwm_config,
-                          NULL) == NRF_SUCCESS);
-}
-
-static void pwm_start(pwm_wrapper_t *pwm)
-{
-    if (nrfx_pwm_is_stopped(pwm->pwm))
-    {
-        nrfx_pwm_simple_playback(pwm->pwm, pwm->seq, 1, NRFX_PWM_FLAG_LOOP);
-    }
-}
-
-static void pwm_stop(pwm_wrapper_t *pwm)
-{
-    if (!nrfx_pwm_is_stopped(pwm->pwm))
-    {
-        nrfx_pwm_stop(pwm->pwm, false);
-    }
-}
-
-static void pwm_set_duty_cycle(pwm_wrapper_t *pwm,
-                               uint8_t channel,
-                               uint32_t duty_cycle)
-{
-    duty_cycle %= 1 + max_pct;
-
-    switch (channel)
-    {
-        case pwm_channel_indicator:
-            pwm->seq_values->channel_0 = duty_cycle; break;
-        case pwm_channel_red:
-            pwm->seq_values->channel_1 = duty_cycle; break;
-        case pwm_channel_green:
-            pwm->seq_values->channel_2 = duty_cycle; break;
-        case pwm_channel_blue:
-            pwm->seq_values->channel_3 = duty_cycle; break;
-    }
-}
 
 static void led_set_state(uint8_t state)
 {
@@ -234,9 +159,9 @@ static void led_set_state(uint8_t state)
 
 static void led_set_color(rgb_t color)
 {
-    pwm_set_duty_cycle(&my_pwm, pwm_channel_red, ((uint16_t) color.r * max_pct) / 255);
-    pwm_set_duty_cycle(&my_pwm, pwm_channel_green, ((uint16_t) color.g * max_pct) / 255);
-    pwm_set_duty_cycle(&my_pwm, pwm_channel_blue, ((uint16_t) color.b * max_pct) / 255);
+    pwm_set_duty_cycle(&my_pwm, pwm_channel_red, ((uint16_t) color.r * pwm_max_pct) / 255);
+    pwm_set_duty_cycle(&my_pwm, pwm_channel_green, ((uint16_t) color.g * pwm_max_pct) / 255);
+    pwm_set_duty_cycle(&my_pwm, pwm_channel_blue, ((uint16_t) color.b * pwm_max_pct) / 255);
 }
 
 static void advertising_start(bool erase_bonds);
@@ -853,7 +778,7 @@ void led_save_init(void)
 
     if (NRF_SUCCESS != fds_init())
     {
-        pwm_set_duty_cycle(&my_pwm, pwm_channel_indicator, max_pct);
+        pwm_set_duty_cycle(&my_pwm, pwm_channel_indicator, pwm_max_pct);
     }
 }
 
@@ -927,7 +852,7 @@ int main(void)
         my_led_mappings[pwm_channel_blue],
     };
 
-    pwm_init(&my_pwm, channels, max_pct, true);
+    pwm_init(&my_pwm, channels, pwm_max_pct, true);
     pwm_start(&my_pwm);
     pwm_set_duty_cycle(&my_pwm, pwm_channel_indicator, 0);
 
