@@ -18,46 +18,47 @@
 
 #define ESTC_UUID_TYPE BLE_UUID_TYPE_VENDOR_BEGIN
 
-#define ESTC_GATT_CHAR_1_UUID 0xDBF3 /* Set LED color */
-#define ESTC_GATT_CHAR_2_UUID 0xDBF4 /* Set LED state */
-#define ESTC_GATT_CHAR_3_UUID 0xDBF5 /* Get LED color */
-#define ESTC_GATT_CHAR_4_UUID 0xDBF6 /* Get LED state */
-#define ESTC_GATT_CHAR_5_UUID 0xDBF7 /* Notify LED color */
-#define ESTC_GATT_CHAR_6_UUID 0xDBF8 /* Notify LED state */
+#define ESTC_GATT_LED_COLOR_WR_CHAR_UUID 0xDBF3 /* Set LED color */
+#define ESTC_GATT_LED_STATE_WR_CHAR_UUID 0xDBF4 /* Set LED state */
+#define ESTC_GATT_LED_COLOR_RD_CHAR_UUID 0xDBF5 /* Get LED color */
+#define ESTC_GATT_LED_STATE_RD_CHAR_UUID 0xDBF6 /* Get LED state */
+#define ESTC_GATT_LED_COLOR_NOTIFY_CHAR_UUID 0xDBF7 /* Notify LED color */
+#define ESTC_GATT_LED_STATE_NOTIFY_CHAR_UUID 0xDBF8 /* Notify LED state */
 
-#define CHAR_1_DESCRIPTION "Three-byte characteristic for setting the LED color. "\
-                           "Send three bytes corresponding "\
-                           "to the color components in 24-bit RGB format. "\
-                           "All colors from #000000 to #FFFFFF are valid."
+#define LED_COLOR_WR_CHAR_DESCRIPTION "Three-byte characteristic for setting the LED color. "\
+                                      "Send three bytes corresponding "\
+                                      "to the color components in 24-bit RGB format. "\
+                                      "All colors from #000000 to #FFFFFF are valid."
 
-#define CHAR_2_DESCRIPTION "One-byte characteristic for setting the LED state. "\
-                           "Send zero to turn off the LED. "\
-                           "Send any non-zero number to turn on the LED."
+#define LED_STATE_WR_CHAR_DESCRIPTION "One-byte characteristic for setting the LED state. "\
+                                      "Send zero to turn off the LED. "\
+                                      "Send any non-zero number to turn on the LED."
 
-#define CHAR_3_DESCRIPTION "Characteristic for reading the LED color"
+#define LED_COLOR_RD_CHAR_DESCRIPTION "Characteristic for reading the LED color"
 
-#define CHAR_4_DESCRIPTION "Characteristic for reading the LED state"
+#define LED_STATE_RD_CHAR_DESCRIPTION "Characteristic for reading the LED state"
 
-#define CHAR_5_DESCRIPTION "Characteristic for notifying the LED color"
+#define LED_COLOR_NOTIFY_CHAR_DESCRIPTION "Characteristic for notifying the LED color"
 
-#define CHAR_6_DESCRIPTION "Characteristic for notifying the LED state"
+#define LED_STATE_NOTIFY_CHAR_DESCRIPTION "Characteristic for notifying the LED state"
 
-#define CHAR_3_READ_TEMPLATE "LED color: #%02X%02X%02X"
-#define CHAR_3_READ_LEN (sizeof(CHAR_3_READ_TEMPLATE) - 6)
+#define LED_COLOR_READ_TEMPLATE "LED color: #%02X%02X%02X"
+#define LED_COLOR_READ_LEN (sizeof(LED_COLOR_READ_TEMPLATE) - 6)
 
-#define CHAR_4_READ_TEMPLATE "LED state: %3s"
-#define CHAR_4_READ_LEN (sizeof(CHAR_4_READ_TEMPLATE))
+#define LED_STATE_READ_TEMPLATE "LED state: %3s"
+#define LED_STATE_READ_LEN (sizeof(LED_STATE_READ_TEMPLATE))
 
 typedef struct
 {
     uint16_t service_handle;
     uint16_t connection_handle;
-    ble_gatts_char_handles_t char_1_handles;
-    ble_gatts_char_handles_t char_2_handles;
-    ble_gatts_char_handles_t char_3_handles;
-    ble_gatts_char_handles_t char_4_handles;
-    ble_gatts_char_handles_t char_5_handles;
-    ble_gatts_char_handles_t char_6_handles;
+
+    ble_gatts_char_handles_t led_color_wr_char_handles;
+    ble_gatts_char_handles_t led_state_wr_char_handles;
+    ble_gatts_char_handles_t led_color_rd_char_handles;
+    ble_gatts_char_handles_t led_state_rd_char_handles;
+    ble_gatts_char_handles_t led_color_notify_char_handles;
+    ble_gatts_char_handles_t led_state_notify_char_handles;
 } ble_estc_service_t;
 
 ret_code_t estc_ble_service_init(ble_estc_service_t *service, void *ctx);

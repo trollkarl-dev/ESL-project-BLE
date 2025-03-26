@@ -13,21 +13,21 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, void
 
 extern ble_estc_service_t m_estc_service; 
 
-extern void on_char_1_write(const uint8_t *data, uint16_t len, bool notify, bool save_to_flash);
-extern void on_char_2_write(const uint8_t *data, uint16_t len, bool notify, bool save_to_flash);
+extern void on_led_color_char_write(const uint8_t *data, uint16_t len, bool notify, bool save_to_flash);
+extern void on_led_state_char_write(const uint8_t *data, uint16_t len, bool notify, bool save_to_flash);
 
 static void on_write(const ble_evt_t *ble_evt)
 {
     const ble_gatts_evt_write_t * p_evt_write = &ble_evt->evt.gatts_evt.params.write;
 
-    if (p_evt_write->handle == m_estc_service.char_1_handles.value_handle)
+    if (p_evt_write->handle == m_estc_service.led_color_wr_char_handles.value_handle)
     {
-        on_char_1_write(p_evt_write->data, p_evt_write->len, true, true);
+        on_led_color_char_write(p_evt_write->data, p_evt_write->len, true, true);
     }
 
-    if (p_evt_write->handle == m_estc_service.char_2_handles.value_handle)
+    if (p_evt_write->handle == m_estc_service.led_state_wr_char_handles.value_handle)
     {
-        on_char_2_write(p_evt_write->data, p_evt_write->len, true, true);
+        on_led_state_char_write(p_evt_write->data, p_evt_write->len, true, true);
     }
 }
 
@@ -73,18 +73,18 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, void
 
     ret_code_t error_code;
     
-    const char char_1_user_description[] = CHAR_1_DESCRIPTION;
-    const char char_2_user_description[] = CHAR_2_DESCRIPTION;
-    const char char_3_user_description[] = CHAR_3_DESCRIPTION;
-    const char char_4_user_description[] = CHAR_4_DESCRIPTION;
-    const char char_5_user_description[] = CHAR_5_DESCRIPTION;
-    const char char_6_user_description[] = CHAR_6_DESCRIPTION;
+    const char led_color_wr_char_user_description[] = LED_COLOR_WR_CHAR_DESCRIPTION;
+    const char led_state_wr_char_user_description[] = LED_STATE_WR_CHAR_DESCRIPTION;
+    const char led_color_rd_char_user_description[] = LED_COLOR_RD_CHAR_DESCRIPTION;
+    const char led_state_rd_char_user_description[] = LED_STATE_RD_CHAR_DESCRIPTION;
+    const char led_color_notify_char_user_description[] = LED_COLOR_NOTIFY_CHAR_DESCRIPTION;
+    const char led_state_notify_char_user_description[] = LED_STATE_NOTIFY_CHAR_DESCRIPTION;
 
     memset(&add_char_user_desc, 0, sizeof(ble_add_char_user_desc_t));
 
-    add_char_user_desc.max_size = strlen(char_1_user_description);
-    add_char_user_desc.size = strlen(char_1_user_description);
-    add_char_user_desc.p_char_user_desc = (uint8_t *) char_1_user_description;
+    add_char_user_desc.max_size = strlen(led_color_wr_char_user_description);
+    add_char_user_desc.size = strlen(led_color_wr_char_user_description);
+    add_char_user_desc.p_char_user_desc = (uint8_t *) led_color_wr_char_user_description;
     add_char_user_desc.is_value_user = false;
     add_char_user_desc.is_var_len = false;
     add_char_user_desc.char_props.read = 1;
@@ -92,7 +92,7 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, void
 
     memset(&add_char_params, 0, sizeof(ble_add_char_params_t));
 
-    add_char_params.uuid = ESTC_GATT_CHAR_1_UUID;
+    add_char_params.uuid = ESTC_GATT_LED_COLOR_WR_CHAR_UUID;
     add_char_params.uuid_type = ESTC_UUID_TYPE;
     add_char_params.init_len = sizeof(uint8_t) * 3;
     add_char_params.max_len = sizeof(uint8_t) * 3;
@@ -104,7 +104,7 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, void
 
     error_code = characteristic_add(service->service_handle,
                                     &add_char_params,
-                                    &service->char_1_handles);
+                                    &service->led_color_wr_char_handles);
 
     if (error_code != NRF_SUCCESS)
     {
@@ -113,9 +113,9 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, void
 
     memset(&add_char_user_desc, 0, sizeof(ble_add_char_user_desc_t));
 
-    add_char_user_desc.max_size = strlen(char_2_user_description);
-    add_char_user_desc.size = strlen(char_2_user_description);
-    add_char_user_desc.p_char_user_desc = (uint8_t *) char_2_user_description;
+    add_char_user_desc.max_size = strlen(led_state_wr_char_user_description);
+    add_char_user_desc.size = strlen(led_state_wr_char_user_description);
+    add_char_user_desc.p_char_user_desc = (uint8_t *) led_state_wr_char_user_description;
     add_char_user_desc.is_value_user = false;
     add_char_user_desc.is_var_len = false;
     add_char_user_desc.char_props.read = 1;
@@ -123,7 +123,7 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, void
 
     memset(&add_char_params, 0, sizeof(ble_add_char_params_t));
 
-    add_char_params.uuid = ESTC_GATT_CHAR_2_UUID;
+    add_char_params.uuid = ESTC_GATT_LED_STATE_WR_CHAR_UUID;
     add_char_params.uuid_type = ESTC_UUID_TYPE;
     add_char_params.init_len = sizeof(uint8_t);
     add_char_params.max_len = sizeof(uint8_t);
@@ -135,7 +135,7 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, void
 
     error_code = characteristic_add(service->service_handle,
                                     &add_char_params,
-                                    &service->char_2_handles);
+                                    &service->led_state_wr_char_handles);
 
     if (error_code != NRF_SUCCESS)
     {
@@ -144,9 +144,9 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, void
 
     memset(&add_char_user_desc, 0, sizeof(ble_add_char_user_desc_t));
 
-    add_char_user_desc.max_size = strlen(char_3_user_description);
-    add_char_user_desc.size = strlen(char_3_user_description);
-    add_char_user_desc.p_char_user_desc = (uint8_t *) char_3_user_description;
+    add_char_user_desc.max_size = strlen(led_color_rd_char_user_description);
+    add_char_user_desc.size = strlen(led_color_rd_char_user_description);
+    add_char_user_desc.p_char_user_desc = (uint8_t *) led_color_rd_char_user_description;
     add_char_user_desc.is_value_user = false;
     add_char_user_desc.is_var_len = false;
     add_char_user_desc.char_props.read = 1;
@@ -157,10 +157,10 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, void
     memset(&char_pf, 0, sizeof(ble_gatts_char_pf_t));
     char_pf.format = BLE_GATT_CPF_FORMAT_UTF8S;
 
-    add_char_params.uuid = ESTC_GATT_CHAR_3_UUID;
+    add_char_params.uuid = ESTC_GATT_LED_COLOR_RD_CHAR_UUID;
     add_char_params.uuid_type = ESTC_UUID_TYPE;
-    add_char_params.init_len = CHAR_3_READ_LEN - 1;
-    add_char_params.max_len = CHAR_3_READ_LEN - 1;
+    add_char_params.init_len = LED_COLOR_READ_LEN - 1;
+    add_char_params.max_len = LED_COLOR_READ_LEN - 1;
     add_char_params.char_props.read = 1;
     add_char_params.is_var_len = false;
     add_char_params.is_value_user = false;
@@ -170,7 +170,7 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, void
 
     error_code = characteristic_add(service->service_handle,
                                     &add_char_params,
-                                    &service->char_3_handles);
+                                    &service->led_color_rd_char_handles);
 
     if (error_code != NRF_SUCCESS)
     {
@@ -179,9 +179,9 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, void
 
     memset(&add_char_user_desc, 0, sizeof(ble_add_char_user_desc_t));
 
-    add_char_user_desc.max_size = strlen(char_4_user_description);
-    add_char_user_desc.size = strlen(char_4_user_description);
-    add_char_user_desc.p_char_user_desc = (uint8_t *) char_4_user_description;
+    add_char_user_desc.max_size = strlen(led_state_rd_char_user_description);
+    add_char_user_desc.size = strlen(led_state_rd_char_user_description);
+    add_char_user_desc.p_char_user_desc = (uint8_t *) led_state_rd_char_user_description;
     add_char_user_desc.is_value_user = false;
     add_char_user_desc.is_var_len = false;
     add_char_user_desc.char_props.read = 1;
@@ -192,10 +192,10 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, void
     memset(&char_pf, 0, sizeof(ble_gatts_char_pf_t));
     char_pf.format = BLE_GATT_CPF_FORMAT_UTF8S;
 
-    add_char_params.uuid = ESTC_GATT_CHAR_4_UUID;
+    add_char_params.uuid = ESTC_GATT_LED_STATE_RD_CHAR_UUID;
     add_char_params.uuid_type = ESTC_UUID_TYPE;
-    add_char_params.init_len = CHAR_4_READ_LEN - 1;
-    add_char_params.max_len = CHAR_4_READ_LEN - 1;
+    add_char_params.init_len = LED_STATE_READ_LEN - 1;
+    add_char_params.max_len = LED_STATE_READ_LEN - 1;
     add_char_params.char_props.read = 1;
     add_char_params.is_var_len = false;
     add_char_params.is_value_user = false;
@@ -205,7 +205,7 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, void
 
     error_code = characteristic_add(service->service_handle,
                                     &add_char_params,
-                                    &service->char_4_handles);
+                                    &service->led_state_rd_char_handles);
 
     if (error_code != NRF_SUCCESS)
     {
@@ -214,9 +214,9 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, void
 
     memset(&add_char_user_desc, 0, sizeof(ble_add_char_user_desc_t));
 
-    add_char_user_desc.max_size = strlen(char_5_user_description);
-    add_char_user_desc.size = strlen(char_5_user_description);
-    add_char_user_desc.p_char_user_desc = (uint8_t *) char_5_user_description;
+    add_char_user_desc.max_size = strlen(led_color_notify_char_user_description);
+    add_char_user_desc.size = strlen(led_color_notify_char_user_description);
+    add_char_user_desc.p_char_user_desc = (uint8_t *) led_color_notify_char_user_description;
     add_char_user_desc.is_value_user = false;
     add_char_user_desc.is_var_len = false;
     add_char_user_desc.char_props.read = 1;
@@ -227,10 +227,10 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, void
     memset(&char_pf, 0, sizeof(ble_gatts_char_pf_t));
     char_pf.format = BLE_GATT_CPF_FORMAT_UTF8S;
 
-    add_char_params.uuid = ESTC_GATT_CHAR_5_UUID;
+    add_char_params.uuid = ESTC_GATT_LED_COLOR_NOTIFY_CHAR_UUID;
     add_char_params.uuid_type = ESTC_UUID_TYPE;
-    add_char_params.init_len = CHAR_3_READ_LEN - 1;
-    add_char_params.max_len = CHAR_3_READ_LEN - 1;
+    add_char_params.init_len = LED_COLOR_READ_LEN - 1;
+    add_char_params.max_len = LED_COLOR_READ_LEN - 1;
     add_char_params.char_props.notify = 1;
     add_char_params.is_var_len = false;
     add_char_params.is_value_user = false;
@@ -240,7 +240,7 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, void
 
     error_code = characteristic_add(service->service_handle,
                                     &add_char_params,
-                                    &service->char_5_handles);
+                                    &service->led_color_notify_char_handles);
 
     if (error_code != NRF_SUCCESS)
     {
@@ -249,9 +249,9 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, void
 
     memset(&add_char_user_desc, 0, sizeof(ble_add_char_user_desc_t));
 
-    add_char_user_desc.max_size = strlen(char_6_user_description);
-    add_char_user_desc.size = strlen(char_6_user_description);
-    add_char_user_desc.p_char_user_desc = (uint8_t *) char_6_user_description;
+    add_char_user_desc.max_size = strlen(led_state_notify_char_user_description);
+    add_char_user_desc.size = strlen(led_state_notify_char_user_description);
+    add_char_user_desc.p_char_user_desc = (uint8_t *) led_state_notify_char_user_description;
     add_char_user_desc.is_value_user = false;
     add_char_user_desc.is_var_len = false;
     add_char_user_desc.char_props.read = 1;
@@ -262,10 +262,10 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, void
     memset(&char_pf, 0, sizeof(ble_gatts_char_pf_t));
     char_pf.format = BLE_GATT_CPF_FORMAT_UTF8S;
 
-    add_char_params.uuid = ESTC_GATT_CHAR_6_UUID;
+    add_char_params.uuid = ESTC_GATT_LED_STATE_NOTIFY_CHAR_UUID;
     add_char_params.uuid_type = ESTC_UUID_TYPE;
-    add_char_params.init_len = CHAR_4_READ_LEN - 1;
-    add_char_params.max_len = CHAR_4_READ_LEN - 1;
+    add_char_params.init_len = LED_STATE_READ_LEN - 1;
+    add_char_params.max_len = LED_STATE_READ_LEN - 1;
     add_char_params.char_props.notify = 1;
     add_char_params.is_var_len = false;
     add_char_params.is_value_user = false;
@@ -275,7 +275,7 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, void
 
     error_code = characteristic_add(service->service_handle,
                                     &add_char_params,
-                                    &service->char_6_handles);
+                                    &service->led_state_notify_char_handles);
 
     if (error_code != NRF_SUCCESS)
     {

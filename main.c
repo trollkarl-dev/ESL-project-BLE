@@ -72,8 +72,8 @@ ble_estc_service_t m_estc_service; /**< ESTC example BLE service */
 
 #define NOTIFYING_DELAY_MS 100
 
-APP_TIMER_DEF(notify_char_5_timer);
-APP_TIMER_DEF(notify_char_6_timer);
+APP_TIMER_DEF(notify_led_color_timer);
+APP_TIMER_DEF(notify_led_state_timer);
 
 #define GC_PERIOD_MS 60000UL
 
@@ -103,27 +103,27 @@ static const led_params_t led_params_default = {
 
 static volatile led_params_t led_params = led_params_default;
 
-void prepare_char_3_value(char *outbuf, rgb_t color)
+void prepare_led_color_rd_char_value(char *outbuf, rgb_t color)
 {
-    snprintf(outbuf, CHAR_3_READ_LEN, CHAR_3_READ_TEMPLATE, color.r, color.g, color.b);
+    snprintf(outbuf, LED_COLOR_READ_LEN, LED_COLOR_READ_TEMPLATE, color.r, color.g, color.b);
 }
 
-void prepare_char_4_value(char *outbuf, uint8_t state)
+void prepare_led_state_rd_char_value(char *outbuf, uint8_t state)
 {
-    snprintf(outbuf, CHAR_4_READ_LEN, CHAR_4_READ_TEMPLATE, state ? "on" : "off");
+    snprintf(outbuf, LED_STATE_READ_LEN, LED_STATE_READ_TEMPLATE, state ? "on" : "off");
 }
 
-static void notify_char_5_timer_handler(void *ctx)
+static void notify_led_color_timer_handler(void *ctx)
 {
     ble_gatts_hvx_params_t hvx_params;
 
-    char strbuf[CHAR_3_READ_LEN + 1];
+    char strbuf[LED_COLOR_READ_LEN + 1];
     uint16_t len;
 
-    prepare_char_3_value(strbuf, led_params.color);
+    prepare_led_color_rd_char_value(strbuf, led_params.color);
     len = strlen(strbuf);
 
-    hvx_params.handle = m_estc_service.char_5_handles.value_handle;
+    hvx_params.handle = m_estc_service.led_color_notify_char_handles.value_handle;
     hvx_params.type = BLE_GATT_HVX_NOTIFICATION;
     hvx_params.offset = 0;
     hvx_params.p_len = &len;
@@ -134,17 +134,17 @@ static void notify_char_5_timer_handler(void *ctx)
     NRF_LOG_INFO("Characteristic 5 Notify");
 }
 
-static void notify_char_6_timer_handler(void *ctx)
+static void notify_led_state_timer_handler(void *ctx)
 {
     ble_gatts_hvx_params_t hvx_params;
 
-    char strbuf[CHAR_4_READ_LEN + 1];
+    char strbuf[LED_STATE_READ_LEN + 1];
     uint16_t len;
 
-    prepare_char_4_value(strbuf, led_params.state);
+    prepare_led_state_rd_char_value(strbuf, led_params.state);
     len = strlen(strbuf);
 
-    hvx_params.handle = m_estc_service.char_6_handles.value_handle;
+    hvx_params.handle = m_estc_service.led_state_notify_char_handles.value_handle;
     hvx_params.type = BLE_GATT_HVX_NOTIFICATION;
     hvx_params.offset = 0;
     hvx_params.p_len = &len;
@@ -293,13 +293,13 @@ static void timers_init(void)
     ret_code_t err_code = app_timer_init();
     APP_ERROR_CHECK(err_code);
 
-    app_timer_create(&notify_char_5_timer,
+    app_timer_create(&notify_led_color_timer,
                      APP_TIMER_MODE_SINGLE_SHOT,
-                     notify_char_5_timer_handler);
+                     notify_led_color_timer_handler);
 
-    app_timer_create(&notify_char_6_timer,
+    app_timer_create(&notify_led_state_timer,
                      APP_TIMER_MODE_SINGLE_SHOT,
-                     notify_char_6_timer_handler);
+                     notify_led_state_timer_handler);
 
     app_timer_create(&gc_timer,
                      APP_TIMER_MODE_REPEATED,
@@ -478,8 +478,8 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
     }
 }
 
-void on_char_1_write(const uint8_t *data, uint16_t len, bool notify, bool save_to_flash);
-void on_char_2_write(const uint8_t *data, uint16_t len, bool notify, bool save_to_flash);
+void on_led_color_char_write(const uint8_t *data, uint16_t len, bool notify, bool save_to_flash);
+void on_led_state_char_write(const uint8_t *data, uint16_t len, bool notify, bool save_to_flash);
 
 /**@brief Function for handling BLE events.
  *
@@ -498,8 +498,8 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             break;
 
         case BLE_GAP_EVT_CONNECTED:
-            on_char_1_write((uint8_t *) &(led_params.color), 3, false, false);
-            on_char_2_write((uint8_t *) &(led_params.state), 1, false, false);
+            on_led_color_char_write((uint8_t *) &(led_params.color), 3, false, false);
+            on_led_state_char_write((uint8_t *) &(led_params.state), 1, false, false);
 
             NRF_LOG_INFO("Connected (conn_handle: %d)", p_ble_evt->evt.gap_evt.conn_handle);
 
@@ -766,10 +766,10 @@ void led_save_state(void)
     display_storage_state();
 }
 
-void on_char_1_write(const uint8_t *data, uint16_t len, bool notify, bool save_to_flash)
+void on_led_color_char_write(const uint8_t *data, uint16_t len, bool notify, bool save_to_flash)
 {
     ble_gatts_value_t value;
-    char strbuf[CHAR_3_READ_LEN + 1];
+    char strbuf[LED_COLOR_READ_LEN + 1];
 
     if (len == 3)
     {
@@ -782,31 +782,31 @@ void on_char_1_write(const uint8_t *data, uint16_t len, bool notify, bool save_t
             led_save_state();
         }
 
-        prepare_char_3_value(strbuf, color);
+        prepare_led_color_rd_char_value(strbuf, color);
 
         value.len = strlen(strbuf);
         value.offset = 0;
         value.p_value = (uint8_t *) strbuf;
 
         sd_ble_gatts_value_set(m_estc_service.connection_handle,
-                               m_estc_service.char_3_handles.value_handle,
+                               m_estc_service.led_color_rd_char_handles.value_handle,
                                &value);
 
         NRF_LOG_INFO("Characteristic 1 has been updated");
 
         if (notify)
         {
-            app_timer_start(notify_char_5_timer,
+            app_timer_start(notify_led_color_timer,
                             APP_TIMER_TICKS(NOTIFYING_DELAY_MS),
                             NULL);
         }
     }
 }
 
-void on_char_2_write(const uint8_t *data, uint16_t len, bool notify, bool save_to_flash)
+void on_led_state_char_write(const uint8_t *data, uint16_t len, bool notify, bool save_to_flash)
 {
     ble_gatts_value_t value;
-    char strbuf[CHAR_4_READ_LEN + 1];
+    char strbuf[LED_STATE_READ_LEN + 1];
 
     if (len == 1)
     {
@@ -818,21 +818,21 @@ void on_char_2_write(const uint8_t *data, uint16_t len, bool notify, bool save_t
             led_save_state();
         }
 
-        prepare_char_4_value(strbuf, data[0]);
+        prepare_led_state_rd_char_value(strbuf, data[0]);
 
         value.len = strlen(strbuf);
         value.offset = 0;
         value.p_value = (uint8_t *) strbuf;
 
         sd_ble_gatts_value_set(m_estc_service.connection_handle,
-                               m_estc_service.char_4_handles.value_handle,
+                               m_estc_service.led_state_rd_char_handles.value_handle,
                                &value);
 
         NRF_LOG_INFO("Characteristic 2 has been updated");
 
         if (notify)
         {
-            app_timer_start(notify_char_6_timer,
+            app_timer_start(notify_led_state_timer,
                             APP_TIMER_TICKS(NOTIFYING_DELAY_MS),
                             NULL);
         }
