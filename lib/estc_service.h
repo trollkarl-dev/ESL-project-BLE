@@ -22,6 +22,9 @@
 #define ESTC_GATT_LED_STATE_CHAR_UUID 0xDBF4
 #define ESTC_GATT_LED_NOTIFY_CHAR_UUID 0xDBF5
 
+#define ESTC_GATT_LED_COLOR_CHAR_LEN (3 * sizeof(uint8_t))
+#define ESTC_GATT_LED_STATE_CHAR_LEN (1 * sizeof(uint8_t))
+
 #define LED_COLOR_CHAR_DESCRIPTION "Three-byte characteristic for setting the LED color. "\
                                    "Send three bytes corresponding "\
                                    "to the color components in 24-bit RGB format. "\

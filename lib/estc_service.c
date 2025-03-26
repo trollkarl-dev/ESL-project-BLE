@@ -91,8 +91,8 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, void
 
     add_char_params.uuid = ESTC_GATT_LED_COLOR_CHAR_UUID;
     add_char_params.uuid_type = ESTC_UUID_TYPE;
-    add_char_params.init_len = sizeof(uint8_t) * 3;
-    add_char_params.max_len = sizeof(uint8_t) * 3;
+    add_char_params.init_len = ESTC_GATT_LED_COLOR_CHAR_LEN;
+    add_char_params.max_len = ESTC_GATT_LED_COLOR_CHAR_LEN;
     add_char_params.char_props.write = 1;
     add_char_params.char_props.read = 1;
     add_char_params.is_var_len = false;
@@ -124,8 +124,8 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, void
 
     add_char_params.uuid = ESTC_GATT_LED_STATE_CHAR_UUID;
     add_char_params.uuid_type = ESTC_UUID_TYPE;
-    add_char_params.init_len = sizeof(uint8_t);
-    add_char_params.max_len = sizeof(uint8_t);
+    add_char_params.init_len = ESTC_GATT_LED_STATE_CHAR_LEN;
+    add_char_params.max_len = ESTC_GATT_LED_STATE_CHAR_LEN;
     add_char_params.char_props.write = 1;
     add_char_params.char_props.read = 1;
     add_char_params.is_var_len = false;

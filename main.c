@@ -125,7 +125,7 @@ static void notify_led_timer_handler(void *ctx)
 
     sd_ble_gatts_hvx(m_estc_service.connection_handle, &hvx_params);
 
-    NRF_LOG_INFO("Characteristic 5 Notify");
+    NRF_LOG_INFO("LED Notify");
 }
 
 enum {
@@ -663,7 +663,7 @@ void led_save_state(void)
 
 void on_led_color_char_write(const uint8_t *data, uint16_t len, bool on_connected)
 {
-    if (len != 3)
+    if (len != ESTC_GATT_LED_COLOR_CHAR_LEN)
     {
         return;
     }
@@ -675,7 +675,7 @@ void on_led_color_char_write(const uint8_t *data, uint16_t len, bool on_connecte
     {
         ble_gatts_value_t value;
 
-        value.len = 3;
+        value.len = ESTC_GATT_LED_COLOR_CHAR_LEN;
         value.offset = 0;
         value.p_value = (uint8_t *) &(led_params.color);
 
@@ -692,12 +692,12 @@ void on_led_color_char_write(const uint8_t *data, uint16_t len, bool on_connecte
                         NULL);
     }
 
-    NRF_LOG_INFO("Characteristic 1 has been updated");
+    NRF_LOG_INFO("LED color has been updated");
 }
 
 void on_led_state_char_write(const uint8_t *data, uint16_t len, bool on_connected)
 {
-    if (len != 1)
+    if (len != ESTC_GATT_LED_STATE_CHAR_LEN)
     {
         return;
     }
@@ -709,7 +709,7 @@ void on_led_state_char_write(const uint8_t *data, uint16_t len, bool on_connecte
     {
         ble_gatts_value_t value;
 
-        value.len = 1;
+        value.len = ESTC_GATT_LED_STATE_CHAR_LEN;
         value.offset = 0;
         value.p_value = (uint8_t *) &(led_params.state);
 
@@ -726,7 +726,7 @@ void on_led_state_char_write(const uint8_t *data, uint16_t len, bool on_connecte
                         NULL);
     }
 
-    NRF_LOG_INFO("Characteristic 2 has been updated");
+    NRF_LOG_INFO("LED state has been updated");
 }
 
 void fds_on_init(void)
