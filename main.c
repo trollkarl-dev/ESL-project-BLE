@@ -17,6 +17,7 @@
 #include "nrf_sdh_ble.h"
 #include "app_timer.h"
 #include "fds.h"
+#include "fds_internal_defs.h"
 #include "peer_manager.h"
 #include "peer_manager_handler.h"
 #include "bsp_btn_ble.h"
@@ -32,7 +33,6 @@
 #include "nrf_log_backend_usb.h"
 
 #include "pwm_wrap.h"
-#include "my_board.h"
 #include "estc_service.h"
 #include "led_common.h"
 
@@ -73,26 +73,6 @@ ble_estc_service_t m_estc_service; /**< ESTC example BLE service */
 
 APP_TIMER_DEF(notify_led_timer);
 
-#define GC_PERIOD_MS 60000UL
-
-APP_TIMER_DEF(gc_timer);
-
-static void gc_timer_handler(void *ctx)
-{
-    ret_code_t ret_code = fds_gc();
-
-    switch (ret_code)
-    {
-        case NRF_SUCCESS:
-            NRF_LOG_INFO("Trigger garbage collection");
-            break;
-
-        default:
-            NRF_LOG_ERROR("Unable to trigger garbage collection!");
-            break;
-    }
-}
-
 static const led_params_t led_params_default = {
     .color = (rgb_t) {0xff, 0x00, 0xff},
     .state = 0x01
@@ -129,7 +109,7 @@ static void notify_led_timer_handler(void *ctx)
 }
 
 enum {
-    pwm_channel_indicator = my_led_first,
+    pwm_channel_indicator = 0,
     pwm_channel_red,
     pwm_channel_green,
     pwm_channel_blue
@@ -195,10 +175,6 @@ static void timers_init(void)
     app_timer_create(&notify_led_timer,
                      APP_TIMER_MODE_SINGLE_SHOT,
                      notify_led_timer_handler);
-
-    app_timer_create(&gc_timer,
-                     APP_TIMER_MODE_REPEATED,
-                     gc_timer_handler);
 }
 
 /**@brief Function for the GAP initialization.
@@ -622,6 +598,36 @@ static void display_storage_state(void)
                      stat.words_used,
                      stat.freeable_words);
     }
+    else
+    {
+        NRF_LOG_INFO("Unable to retrieve file system statistics");
+    }
+}
+
+#define LED_SAVES_FDS_USAGE_LIMIT ((uint32_t) FDS_PHY_PAGE_SIZE * 75 / 100)
+
+static void check_and_trigger_gc(void)
+{
+    fds_stat_t stat;
+
+    if (NRF_SUCCESS == fds_stat(&stat))
+    {
+        if (stat.freeable_words > LED_SAVES_FDS_USAGE_LIMIT)
+        {
+            if (NRF_SUCCESS == fds_gc())
+            {
+                NRF_LOG_INFO("Trigger garbage collection");
+            }
+            else
+            {
+                NRF_LOG_WARNING("Unable to trigger garbage collection!");
+            }
+        }
+    }
+    else
+    {
+        NRF_LOG_INFO("Unable to retrieve file system statistics");
+    }
 }
 
 void led_save_state(void)
@@ -659,6 +665,7 @@ void led_save_state(void)
     }
 
     display_storage_state();
+    check_and_trigger_gc();
 }
 
 void on_led_color_char_write(const uint8_t *data, uint16_t len, bool on_connected)
@@ -750,8 +757,6 @@ void fds_on_init(void)
 
     led_set_color(led_params.color);
     led_set_state(led_params.state);
-
-    app_timer_start(gc_timer, APP_TIMER_TICKS(GC_PERIOD_MS), NULL);
 }
 
 void fds_events_handler(fds_evt_t const * p_evt)
@@ -841,23 +846,25 @@ static void peer_manager_init(bool erase_bonds)
     APP_ERROR_CHECK(err_code);
 }
 
-/**@brief Function for application main entry.
- */
-int main(void)
+static void pwm_hw_init(void)
 {
-    static uint8_t channels[NRF_PWM_CHANNEL_COUNT] = {
-        my_led_mappings[pwm_channel_indicator],
-        my_led_mappings[pwm_channel_red],
-        my_led_mappings[pwm_channel_green],
-        my_led_mappings[pwm_channel_blue],
+    const uint8_t channels[NRF_PWM_CHANNEL_COUNT] = {
+        NRF_GPIO_PIN_MAP(0,  6), /* Indicator Channel */
+        NRF_GPIO_PIN_MAP(0,  8), /* Red Channel */
+        NRF_GPIO_PIN_MAP(1,  9), /* Green Channel */
+        NRF_GPIO_PIN_MAP(0, 12), /* Blue Channel */
     };
 
     pwm_init(&my_pwm, channels, pwm_max_pct, true);
     pwm_start(&my_pwm);
     pwm_set_duty_cycle(&my_pwm, pwm_channel_indicator, 0);
+}
 
-    srand(DEAD_BEEF);
-
+/**@brief Function for application main entry.
+ */
+int main(void)
+{
+    pwm_hw_init();
     led_save_init();
 
     // Initialize.
