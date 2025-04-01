@@ -49,6 +49,7 @@ typedef struct
     ble_gatts_char_handles_t led_notify_char_handles;
 } ble_estc_service_t;
 
+void estc_ble_service_deps_init(void);
 ret_code_t estc_ble_service_init(ble_estc_service_t *service, void *ctx);
 void estc_ble_service_on_ble_event(const ble_evt_t *ble_evt, void *ctx);
 

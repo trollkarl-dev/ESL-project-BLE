@@ -16,8 +16,6 @@
 #include "nrf_sdh_soc.h"
 #include "nrf_sdh_ble.h"
 #include "app_timer.h"
-#include "fds.h"
-#include "fds_internal_defs.h"
 #include "peer_manager.h"
 #include "peer_manager_handler.h"
 #include "bsp_btn_ble.h"
@@ -32,9 +30,7 @@
 #include "nrf_log_default_backends.h"
 #include "nrf_log_backend_usb.h"
 
-#include "pwm_wrap.h"
 #include "estc_service.h"
-#include "led_common.h"
 
 #define DEVICE_NAME                     "Custom LED controller"                 /**< Name of device. Will be included in the advertising data. */
 #define MANUFACTURER_NAME               "NordicSemiconductor"                   /**< Manufacturer. Will be passed to Device Information Service. */
@@ -69,81 +65,6 @@ static ble_uuid_t m_adv_uuids[] =                                               
 
 ble_estc_service_t m_estc_service; /**< ESTC example BLE service */
 
-#define NOTIFYING_DELAY_MS 100
-
-APP_TIMER_DEF(notify_led_timer);
-
-static const led_params_t led_params_default = {
-    .color = (rgb_t) {0xff, 0x00, 0xff},
-    .state = 0x01
-};
-
-static volatile led_params_t led_params = led_params_default;
-
-static void notify_led_timer_handler(void *ctx)
-{
-    ble_gatts_hvx_params_t hvx_params;
-
-    char strbuf[LED_READ_LEN + 1] = {0};
-    uint16_t len;
-
-    snprintf(strbuf,
-             LED_READ_LEN,
-             LED_READ_TEMPLATE,
-             led_params.color.r,
-             led_params.color.g,
-             led_params.color.b,
-             led_params.state ? "on" : "off");
-
-    len = strlen(strbuf);
-
-    hvx_params.handle = m_estc_service.led_notify_char_handles.value_handle;
-    hvx_params.type = BLE_GATT_HVX_NOTIFICATION;
-    hvx_params.offset = 0;
-    hvx_params.p_len = &len;
-    hvx_params.p_data = (uint8_t *) strbuf;
-
-    sd_ble_gatts_hvx(m_estc_service.connection_handle, &hvx_params);
-
-    NRF_LOG_INFO("LED Notify");
-}
-
-enum {
-    pwm_channel_indicator = 0,
-    pwm_channel_red,
-    pwm_channel_green,
-    pwm_channel_blue
-};
-
-static nrfx_pwm_t my_pwm_instance = NRFX_PWM_INSTANCE(0);
-static nrf_pwm_values_individual_t my_pwm_seq_values;
-static nrf_pwm_sequence_t const my_pwm_seq =
-{
-    .values.p_individual = &my_pwm_seq_values,
-    .length              = NRF_PWM_VALUES_LENGTH(my_pwm_seq_values),
-    .repeats             = 0,
-    .end_delay           = 0
-};
-
-static pwm_wrapper_t my_pwm =
-{
-    .pwm = &my_pwm_instance,
-    .seq_values = &my_pwm_seq_values,
-    .seq = &my_pwm_seq
-};
-
-static void led_set_state(uint8_t state)
-{
-    (state ? pwm_start : pwm_stop)(&my_pwm);
-}
-
-static void led_set_color(rgb_t color)
-{
-    pwm_set_duty_cycle(&my_pwm, pwm_channel_red, ((uint16_t) color.r * pwm_max_pct) / 255);
-    pwm_set_duty_cycle(&my_pwm, pwm_channel_green, ((uint16_t) color.g * pwm_max_pct) / 255);
-    pwm_set_duty_cycle(&my_pwm, pwm_channel_blue, ((uint16_t) color.b * pwm_max_pct) / 255);
-}
-
 static void advertising_start(bool erase_bonds);
 
 /**@brief Callback function for asserts in the SoftDevice.
@@ -172,9 +93,6 @@ static void timers_init(void)
     ret_code_t err_code = app_timer_init();
     APP_ERROR_CHECK(err_code);
 
-    app_timer_create(&notify_led_timer,
-                     APP_TIMER_MODE_SINGLE_SHOT,
-                     notify_led_timer_handler);
 }
 
 /**@brief Function for the GAP initialization.
@@ -349,9 +267,6 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
     }
 }
 
-void on_led_color_char_write(const uint8_t *data, uint16_t len, bool on_connected);
-void on_led_state_char_write(const uint8_t *data, uint16_t len, bool on_connected);
-
 /**@brief Function for handling BLE events.
  *
  * @param[in]   p_ble_evt   Bluetooth stack event.
@@ -369,9 +284,6 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             break;
 
         case BLE_GAP_EVT_CONNECTED:
-            on_led_color_char_write((uint8_t *) &(led_params.color), 3, true);
-            on_led_state_char_write((uint8_t *) &(led_params.state), 1, true);
-
             NRF_LOG_INFO("Connected (conn_handle: %d)", p_ble_evt->evt.gap_evt.conn_handle);
 
             APP_ERROR_CHECK(err_code);
@@ -583,210 +495,6 @@ static void advertising_start(bool erase_bonds)
     }
 }
 
-#define FILE_ID 0xBEEF
-#define RECORD_KEY 0xBABE
-
-static void display_storage_state(void)
-{
-    fds_stat_t stat;
-
-    if (NRF_SUCCESS == fds_stat(&stat))
-    {
-        NRF_LOG_INFO("\e[32mFDS stat\e[0m: %d valid record, %d dirty records, %d words used, %d words freeable",
-                     stat.valid_records,
-                     stat.dirty_records,
-                     stat.words_used,
-                     stat.freeable_words);
-    }
-    else
-    {
-        NRF_LOG_INFO("Unable to retrieve file system statistics");
-    }
-}
-
-#define LED_SAVES_FDS_USAGE_LIMIT ((uint32_t) FDS_PHY_PAGE_SIZE * 75 / 100)
-
-static void check_and_trigger_gc(void)
-{
-    fds_stat_t stat;
-
-    if (NRF_SUCCESS == fds_stat(&stat))
-    {
-        if (stat.freeable_words > LED_SAVES_FDS_USAGE_LIMIT)
-        {
-            if (NRF_SUCCESS == fds_gc())
-            {
-                NRF_LOG_INFO("Trigger garbage collection");
-            }
-            else
-            {
-                NRF_LOG_WARNING("Unable to trigger garbage collection!");
-            }
-        }
-    }
-    else
-    {
-        NRF_LOG_INFO("Unable to retrieve file system statistics");
-    }
-}
-
-void led_save_state(void)
-{
-    fds_record_desc_t record_desc;
-    fds_find_token_t record_token;
-    fds_record_t record;
-
-    ret_code_t ret_code;
-
-    memset(&record_token, 0, sizeof(fds_find_token_t));
-
-    record.file_id = FILE_ID;
-    record.key = RECORD_KEY;
-    record.data.p_data = (void *) &led_params;
-    record.data.length_words = sizeof(led_params_t) / 4;
-
-    if (NRF_SUCCESS == fds_record_find(FILE_ID, RECORD_KEY, &record_desc, &record_token))
-    {
-        ret_code = fds_record_update(&record_desc, &record);
-    }
-    else
-    {
-        ret_code = fds_record_write(&record_desc, &record);
-    }
-
-    if (ret_code == NRF_SUCCESS)
-    {
-        NRF_LOG_INFO("LED parameters saved to flash memory");
-    }
-    else
-    {
-        fds_gc();
-        NRF_LOG_INFO("Unable to save LED parameters!");
-    }
-
-    display_storage_state();
-    check_and_trigger_gc();
-}
-
-void on_led_color_char_write(const uint8_t *data, uint16_t len, bool on_connected)
-{
-    if (len != ESTC_GATT_LED_COLOR_CHAR_LEN)
-    {
-        return;
-    }
-
-    led_params.color = *(rgb_t *) data;
-    led_set_color(led_params.color);
-    
-    if (on_connected)
-    {
-        ble_gatts_value_t value;
-
-        value.len = ESTC_GATT_LED_COLOR_CHAR_LEN;
-        value.offset = 0;
-        value.p_value = (uint8_t *) &(led_params.color);
-
-        sd_ble_gatts_value_set(m_estc_service.connection_handle,
-                               m_estc_service.led_color_char_handles.value_handle,
-                               &value);
-    }
-    else
-    {
-        led_save_state();
-
-        app_timer_start(notify_led_timer,
-                        APP_TIMER_TICKS(NOTIFYING_DELAY_MS),
-                        NULL);
-    }
-
-    NRF_LOG_INFO("LED color has been updated");
-}
-
-void on_led_state_char_write(const uint8_t *data, uint16_t len, bool on_connected)
-{
-    if (len != ESTC_GATT_LED_STATE_CHAR_LEN)
-    {
-        return;
-    }
-
-    led_params.state = *(uint8_t *) data;
-    led_set_state(led_params.state);
-    
-    if (on_connected)
-    {
-        ble_gatts_value_t value;
-
-        value.len = ESTC_GATT_LED_STATE_CHAR_LEN;
-        value.offset = 0;
-        value.p_value = (uint8_t *) &(led_params.state);
-
-        sd_ble_gatts_value_set(m_estc_service.connection_handle,
-                               m_estc_service.led_state_char_handles.value_handle,
-                               &value);
-    }
-    else
-    {
-        led_save_state();
-
-        app_timer_start(notify_led_timer,
-                        APP_TIMER_TICKS(NOTIFYING_DELAY_MS),
-                        NULL);
-    }
-
-    NRF_LOG_INFO("LED state has been updated");
-}
-
-void fds_on_init(void)
-{
-    fds_record_desc_t record_desc;
-    fds_find_token_t record_token;
-    fds_flash_record_t flash_record;
-
-    memset(&record_token, 0, sizeof(fds_find_token_t));
-
-    if (NRF_SUCCESS == fds_record_find(FILE_ID, RECORD_KEY, &record_desc, &record_token))
-    {
-        if (NRF_SUCCESS == fds_record_open(&record_desc, &flash_record))
-        {
-            led_params = *(led_params_t *) flash_record.p_data;
-            fds_record_close(&record_desc);
-
-            NRF_LOG_INFO("Read LED parameters from flash memory");
-        }
-    }
-
-    led_set_color(led_params.color);
-    led_set_state(led_params.state);
-}
-
-void fds_events_handler(fds_evt_t const * p_evt)
-{
-    switch (p_evt->id)
-    {
-        case FDS_EVT_INIT:
-            fds_on_init();
-            break;
-
-        case FDS_EVT_GC:
-            NRF_LOG_INFO("Garbage collection is done");
-            display_storage_state();
-            break;
-
-        default:
-            break;
-    }
-}
-
-void led_save_init(void)
-{
-    fds_register(fds_events_handler);
-
-    if (NRF_SUCCESS != fds_init())
-    {
-        pwm_set_duty_cycle(&my_pwm, pwm_channel_indicator, pwm_max_pct);
-    }
-}
-
 /**@brief Function for handling Peer Manager events.
  *
  * @param[in] p_evt  Peer Manager event.
@@ -846,30 +554,16 @@ static void peer_manager_init(bool erase_bonds)
     APP_ERROR_CHECK(err_code);
 }
 
-static void pwm_hw_init(void)
-{
-    const uint8_t channels[NRF_PWM_CHANNEL_COUNT] = {
-        NRF_GPIO_PIN_MAP(0,  6), /* Indicator Channel */
-        NRF_GPIO_PIN_MAP(0,  8), /* Red Channel */
-        NRF_GPIO_PIN_MAP(1,  9), /* Green Channel */
-        NRF_GPIO_PIN_MAP(0, 12), /* Blue Channel */
-    };
-
-    pwm_init(&my_pwm, channels, pwm_max_pct, true);
-    pwm_start(&my_pwm);
-    pwm_set_duty_cycle(&my_pwm, pwm_channel_indicator, 0);
-}
-
 /**@brief Function for application main entry.
  */
 int main(void)
 {
-    pwm_hw_init();
-    led_save_init();
+    timers_init();
+    log_init();
+
+    estc_ble_service_deps_init();
 
     // Initialize.
-    log_init();
-    timers_init();
     button_init();
     power_management_init();
     ble_stack_init();
