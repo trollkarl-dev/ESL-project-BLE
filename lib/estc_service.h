@@ -52,5 +52,6 @@ typedef struct
 void estc_ble_service_deps_init(void);
 ret_code_t estc_ble_service_init(ble_estc_service_t *service, void *ctx);
 void estc_ble_service_on_ble_event(const ble_evt_t *ble_evt, void *ctx);
+void estc_ble_service_led_storage_clean(void);
 
 #endif /* ESTC_SERVICE_H__ */

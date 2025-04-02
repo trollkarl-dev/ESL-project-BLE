@@ -87,6 +87,7 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
  *
  * @details Initializes the timer module. This creates and starts application timers.
  */
+
 static void timers_init(void)
 {
     // Initialize timer module.
@@ -222,23 +223,6 @@ static void application_timers_start(void)
 {
 }
 
-/**@brief Function for putting the chip into sleep mode.
- *
- * @note This function will not return.
- */
-static void sleep_mode_enter(void)
-{
-    ret_code_t err_code;
-
-    // Prepare wakeup buttons.
-    err_code = bsp_btn_ble_sleep_mode_prepare();
-    APP_ERROR_CHECK(err_code);
-
-    // Go to system-off mode (this function will not return; wakeup will cause a reset).
-    err_code = sd_power_system_off();
-    APP_ERROR_CHECK(err_code);
-}
-
 /**@brief Function for handling advertising events.
  *
  * @details This function will be called for advertising events which are passed to the application.
@@ -259,7 +243,7 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
 
         case BLE_ADV_EVT_IDLE:
             NRF_LOG_INFO("ADV Event: idle, no connectable advertising is ongoing");
-            sleep_mode_enter();
+            //sleep_mode_enter();
             break;
 
         default:
@@ -355,45 +339,6 @@ static void ble_stack_init(void)
     NRF_SDH_BLE_OBSERVER(m_ble_observer, APP_BLE_OBSERVER_PRIO, ble_evt_handler, NULL);
 }
 
-/**@brief Function for handling events from the BSP module.
- *
- * @param[in]   event   Event generated when button is pressed.
- */
-static void bsp_event_handler(bsp_event_t event)
-{
-    ret_code_t err_code;
-
-    switch (event)
-    {
-        case BSP_EVENT_SLEEP:
-            sleep_mode_enter();
-            break; // BSP_EVENT_SLEEP
-
-        case BSP_EVENT_DISCONNECT:
-            err_code = sd_ble_gap_disconnect(m_conn_handle,
-                                             BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
-            if (err_code != NRF_ERROR_INVALID_STATE)
-            {
-                APP_ERROR_CHECK(err_code);
-            }
-            break; // BSP_EVENT_DISCONNECT
-
-        case BSP_EVENT_WHITELIST_OFF:
-            if (m_conn_handle == BLE_CONN_HANDLE_INVALID)
-            {
-                err_code = ble_advertising_restart_without_whitelist(&m_advertising);
-                if (err_code != NRF_ERROR_INVALID_STATE)
-                {
-                    APP_ERROR_CHECK(err_code);
-                }
-            }
-            break; // BSP_EVENT_KEY_0
-
-        default:
-            break;
-    }
-}
-
 /**@brief Function for initializing the Advertising functionality.
  */
 static void advertising_init(void)
@@ -419,19 +364,6 @@ static void advertising_init(void)
     APP_ERROR_CHECK(err_code);
 
     ble_advertising_conn_cfg_tag_set(&m_advertising, APP_BLE_CONN_CFG_TAG);
-}
-
-/**@brief Function for initializing buttons and leds.
- */
-static void button_init(void)
-{
-    ret_code_t err_code;
-
-    err_code = bsp_init(BSP_INIT_BUTTONS, bsp_event_handler);
-    APP_ERROR_CHECK(err_code);
-
-    err_code = bsp_btn_ble_init(NULL, NULL);
-    APP_ERROR_CHECK(err_code);
 }
 
 /**@brief Function for initializing the nrf log module.
@@ -564,7 +496,7 @@ int main(void)
     estc_ble_service_deps_init();
 
     // Initialize.
-    button_init();
+
     power_management_init();
     ble_stack_init();
     gap_params_init();

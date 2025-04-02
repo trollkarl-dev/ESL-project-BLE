@@ -17,11 +17,31 @@
 
 #include "nrf_gpio.h"
 
+#include "nrfx_gpiote.h"
+
+#include "button.h"
 #include "pwm_wrap.h"
 #include "led_common.h"
 
 #define ESTC_BLE_SERVICE_NOTIFYING_DELAY_MS 100
 APP_TIMER_DEF(notify_led_timer);
+
+#define LED_STORAGE_INDICATION_DELAY_MS 1000
+APP_TIMER_DEF(led_storage_clean_timer);
+
+APP_TIMER_DEF(debounce_timer);
+APP_TIMER_DEF(btnhold_timer);
+APP_TIMER_DEF(btnclk_timer);
+
+#define BUTTON_GPIO NRF_GPIO_PIN_MAP(1,  6)
+#define BUTTON_ACTIVE_LEVEL 0
+
+enum { btn_dblclk_pause = 200 };
+enum { btnhold_period_first_ms = 500 };
+enum { btnhold_period_next_ms = 50 };
+enum { debounce_period_ms = 50 };
+
+static volatile button_t button;
 
 static ble_uuid128_t const m_base_uuid128 = { ESTC_BASE_UUID };
 
@@ -62,6 +82,21 @@ static pwm_wrapper_t estc_ble_service_pwm =
     .seq_values = &estc_ble_service_pwm_seq_values,
     .seq = &estc_ble_service_pwm_seq
 };
+
+static void btnhold_timer_handler(void *ctx)
+{
+    button_hold_check((button_t *) &button);
+}
+
+static void btnclk_timer_handler(void *ctx)
+{
+    button_click_check((button_t *) &button);
+}
+
+static void debounce_timer_handler(void *ctx)
+{
+    button_debounce_check((button_t *) &button);
+}
 
 static void led_set_state(uint8_t state)
 {
@@ -230,6 +265,10 @@ static void fds_events_handler(fds_evt_t const * p_evt)
             display_storage_state();
             break;
 
+        case FDS_EVT_DEL_FILE:
+            NRF_LOG_INFO("Saves clean is done!");
+            break;
+
         default:
             break;
     }
@@ -345,6 +384,11 @@ void estc_ble_service_on_ble_event(const ble_evt_t *ble_evt, void *ctx)
     }
 }
 
+static void led_storage_clean_timer_handler(void *ctx)
+{
+    pwm_set_duty_cycle(&estc_ble_service_pwm, pwm_channel_indicator, 0);
+}
+
 ret_code_t estc_ble_service_init(ble_estc_service_t *service, void *ctx)
 {
     ret_code_t error_code;
@@ -354,6 +398,22 @@ ret_code_t estc_ble_service_init(ble_estc_service_t *service, void *ctx)
     app_timer_create(&notify_led_timer,
                      APP_TIMER_MODE_SINGLE_SHOT,
                      notify_led_timer_handler);
+
+    app_timer_create(&debounce_timer,
+                     APP_TIMER_MODE_SINGLE_SHOT,
+                     debounce_timer_handler);
+
+    app_timer_create(&btnclk_timer,
+                     APP_TIMER_MODE_SINGLE_SHOT,
+                     btnclk_timer_handler);
+
+    app_timer_create(&btnhold_timer,
+                     APP_TIMER_MODE_SINGLE_SHOT,
+                     btnhold_timer_handler);
+
+    app_timer_create(&led_storage_clean_timer,
+                     APP_TIMER_MODE_SINGLE_SHOT,
+                     led_storage_clean_timer_handler);
 
     error_code = sd_ble_uuid_vs_add(&m_base_uuid128, &service_uuid.type);
     APP_ERROR_CHECK(error_code);
@@ -510,8 +570,100 @@ static void estc_ble_service_pwm_hw_init(void)
     pwm_set_duty_cycle(&estc_ble_service_pwm, pwm_channel_indicator, 0);
 }
 
+void estc_ble_service_led_storage_clean(void)
+{
+    ret_code_t ret_code = fds_file_delete(ESTC_BLE_SERVICE_LED_SAVES_FILE_ID);
+
+    if (ret_code == NRF_SUCCESS)
+    {
+        NRF_LOG_INFO("Clean saves");
+    }
+    else
+    {
+        NRF_LOG_ERROR("Unable to clean saves");
+    }
+
+    pwm_set_duty_cycle(&estc_ble_service_pwm, pwm_channel_indicator, 100);
+    app_timer_start(led_storage_clean_timer, APP_TIMER_TICKS(LED_STORAGE_INDICATION_DELAY_MS), NULL);
+}
+
+
+static void gpiote_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
+{
+    button_first_run((button_t *) &button);
+}
+
+static void button_onclick(uint8_t clicks)
+{
+    if (clicks == 3)
+    {
+        estc_ble_service_led_storage_clean();
+    }
+}
+
+static void button_onhold(void)
+{
+}
+
+static bool button_is_pressed(void)
+{
+    return nrf_gpio_pin_read(BUTTON_GPIO) == BUTTON_ACTIVE_LEVEL;
+}
+
+static void button_schedule_click_check(uint32_t delay_ms)
+{
+    app_timer_start(btnclk_timer, APP_TIMER_TICKS(delay_ms), NULL);
+}
+
+static void button_schedule_hold_check(uint32_t delay_ms)
+{
+    app_timer_start(btnhold_timer, APP_TIMER_TICKS(delay_ms), NULL);
+}
+
+static void button_schedule_debounce_check(uint32_t delay_ms)
+{
+    app_timer_start(debounce_timer, APP_TIMER_TICKS(delay_ms), NULL);
+}
+static button_timings_t const button_timings = {
+    .dblclk_pause_ms = btn_dblclk_pause, 
+    .hold_pause_short_ms = btnhold_period_next_ms,
+    .hold_pause_long_ms = btnhold_period_first_ms,
+    .debounce_period_ms = debounce_period_ms
+};
+
+static button_callbacks_t const button_callbacks = {
+    .onclick = button_onclick,
+    .onhold = button_onhold,
+    .is_pressed = button_is_pressed,
+    .schedule_click_check = button_schedule_click_check,
+    .schedule_hold_check = button_schedule_hold_check,
+    .schedule_debounce_check = button_schedule_debounce_check
+};
+
+static void gpiote_init_on_toggle(nrfx_gpiote_pin_t pin,
+                                  nrf_gpio_pin_pull_t pull,
+                                  nrfx_gpiote_evt_handler_t handler)
+{
+    nrfx_gpiote_in_config_t
+    gpiote_config = NRFX_GPIOTE_CONFIG_IN_SENSE_TOGGLE(false);
+    gpiote_config.pull = pull;
+
+    nrfx_gpiote_in_init(pin, &gpiote_config, handler);
+    nrfx_gpiote_in_event_enable(pin, true);
+}
+
 void estc_ble_service_deps_init(void)
 {
     estc_ble_service_pwm_hw_init();
     estc_ble_service_led_save_init();
+
+    button_init((button_t *) &button,
+                &button_timings,
+                &button_callbacks);
+
+    nrfx_gpiote_init();
+    gpiote_init_on_toggle(BUTTON_GPIO,
+                          NRF_GPIO_PIN_PULLUP,
+                          gpiote_handler);
 }
+
