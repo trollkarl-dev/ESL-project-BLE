@@ -20,7 +20,7 @@
 #include "pwm_wrap.h"
 #include "led_common.h"
 
-#define NOTIFYING_DELAY_MS 100
+#define ESTC_BLE_SERVICE_NOTIFYING_DELAY_MS 100
 APP_TIMER_DEF(notify_led_timer);
 
 static ble_uuid128_t const m_base_uuid128 = { ESTC_BASE_UUID };
@@ -29,8 +29,8 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, void
 
 extern ble_estc_service_t m_estc_service; 
 
-#define FILE_ID 0xBEEF
-#define RECORD_KEY 0xBABE
+#define ESTC_BLE_SERVICE_LED_SAVES_FILE_ID 0xBEEF
+#define ESTC_BLE_SERVICE_LED_SAVES_RECORD_KEY 0xBABE
 
 static const led_params_t led_params_default = {
     .color = (rgb_t) {0xff, 0x00, 0xff},
@@ -46,33 +46,33 @@ enum {
     pwm_channel_blue
 };
 
-static nrfx_pwm_t my_pwm_instance = NRFX_PWM_INSTANCE(0);
-static nrf_pwm_values_individual_t my_pwm_seq_values;
-static nrf_pwm_sequence_t const my_pwm_seq =
+static nrfx_pwm_t estc_ble_service_pwm_instance = NRFX_PWM_INSTANCE(0);
+static nrf_pwm_values_individual_t estc_ble_service_pwm_seq_values;
+static nrf_pwm_sequence_t const estc_ble_service_pwm_seq =
 {
-    .values.p_individual = &my_pwm_seq_values,
-    .length              = NRF_PWM_VALUES_LENGTH(my_pwm_seq_values),
+    .values.p_individual = &estc_ble_service_pwm_seq_values,
+    .length              = NRF_PWM_VALUES_LENGTH(estc_ble_service_pwm_seq_values),
     .repeats             = 0,
     .end_delay           = 0
 };
 
-static pwm_wrapper_t my_pwm =
+static pwm_wrapper_t estc_ble_service_pwm =
 {
-    .pwm = &my_pwm_instance,
-    .seq_values = &my_pwm_seq_values,
-    .seq = &my_pwm_seq
+    .pwm = &estc_ble_service_pwm_instance,
+    .seq_values = &estc_ble_service_pwm_seq_values,
+    .seq = &estc_ble_service_pwm_seq
 };
 
 static void led_set_state(uint8_t state)
 {
-    (state ? pwm_start : pwm_stop)(&my_pwm);
+    (state ? pwm_start : pwm_stop)(&estc_ble_service_pwm);
 }
 
 static void led_set_color(rgb_t color)
 {
-    pwm_set_duty_cycle(&my_pwm, pwm_channel_red, ((uint16_t) color.r * pwm_max_pct) / 255);
-    pwm_set_duty_cycle(&my_pwm, pwm_channel_green, ((uint16_t) color.g * pwm_max_pct) / 255);
-    pwm_set_duty_cycle(&my_pwm, pwm_channel_blue, ((uint16_t) color.b * pwm_max_pct) / 255);
+    pwm_set_duty_cycle(&estc_ble_service_pwm, pwm_channel_red, ((uint16_t) color.r * pwm_max_pct) / 255);
+    pwm_set_duty_cycle(&estc_ble_service_pwm, pwm_channel_green, ((uint16_t) color.g * pwm_max_pct) / 255);
+    pwm_set_duty_cycle(&estc_ble_service_pwm, pwm_channel_blue, ((uint16_t) color.b * pwm_max_pct) / 255);
 }
 
 static void notify_led_timer_handler(void *ctx)
@@ -121,7 +121,7 @@ static void display_storage_state(void)
     }
 }
 
-#define LED_SAVES_FDS_USAGE_LIMIT ((uint32_t) FDS_PHY_PAGE_SIZE * 75 / 100)
+#define ESTC_BLE_SERVICE_LED_SAVES_FDS_USAGE_LIMIT ((uint32_t) FDS_PHY_PAGE_SIZE * 75 / 100)
 
 static void check_and_trigger_gc(void)
 {
@@ -133,7 +133,7 @@ static void check_and_trigger_gc(void)
         return;
     }
 
-    if (stat.freeable_words > LED_SAVES_FDS_USAGE_LIMIT)
+    if (stat.freeable_words > ESTC_BLE_SERVICE_LED_SAVES_FDS_USAGE_LIMIT)
     {
         ret_code_t ret_code = fds_gc();
 
@@ -160,12 +160,15 @@ static void led_save_state(void)
 
     memset(&record_token, 0, sizeof(fds_find_token_t));
 
-    record.file_id = FILE_ID;
-    record.key = RECORD_KEY;
+    record.file_id = ESTC_BLE_SERVICE_LED_SAVES_FILE_ID;
+    record.key = ESTC_BLE_SERVICE_LED_SAVES_RECORD_KEY;
     record.data.p_data = (void *) &led_params;
     record.data.length_words = sizeof(led_params_t) / 4;
 
-    if (NRF_SUCCESS == fds_record_find(FILE_ID, RECORD_KEY, &record_desc, &record_token))
+    if (NRF_SUCCESS == fds_record_find(ESTC_BLE_SERVICE_LED_SAVES_FILE_ID,
+                                       ESTC_BLE_SERVICE_LED_SAVES_RECORD_KEY,
+                                       &record_desc,
+                                       &record_token))
     {
         ret_code = fds_record_update(&record_desc, &record);
     }
@@ -196,7 +199,10 @@ static void fds_on_init(void)
 
     memset(&record_token, 0, sizeof(fds_find_token_t));
 
-    if (NRF_SUCCESS == fds_record_find(FILE_ID, RECORD_KEY, &record_desc, &record_token))
+    if (NRF_SUCCESS == fds_record_find(ESTC_BLE_SERVICE_LED_SAVES_FILE_ID,
+                                       ESTC_BLE_SERVICE_LED_SAVES_RECORD_KEY,
+                                       &record_desc,
+                                       &record_token))
     {
         if (NRF_SUCCESS == fds_record_open(&record_desc, &flash_record))
         {
@@ -256,7 +262,7 @@ static void on_led_color_char_write(const uint8_t *data, uint16_t len, bool on_c
         led_save_state();
 
         app_timer_start(notify_led_timer,
-                        APP_TIMER_TICKS(NOTIFYING_DELAY_MS),
+                        APP_TIMER_TICKS(ESTC_BLE_SERVICE_NOTIFYING_DELAY_MS),
                         NULL);
     }
 
@@ -293,7 +299,7 @@ static void on_led_state_char_write(const uint8_t *data, uint16_t len, bool on_c
         led_save_state();
 
         app_timer_start(notify_led_timer,
-                        APP_TIMER_TICKS(NOTIFYING_DELAY_MS),
+                        APP_TIMER_TICKS(ESTC_BLE_SERVICE_NOTIFYING_DELAY_MS),
                         NULL);
     }
 
@@ -325,8 +331,12 @@ void estc_ble_service_on_ble_event(const ble_evt_t *ble_evt, void *ctx)
             break;
         
         case BLE_GAP_EVT_CONNECTED:
-            on_led_color_char_write((uint8_t *) &(led_params.color), ESTC_GATT_LED_COLOR_CHAR_LEN, true);
-            on_led_state_char_write((uint8_t *) &(led_params.state), ESTC_GATT_LED_STATE_CHAR_LEN, true);
+            on_led_color_char_write((uint8_t *) &(led_params.color),
+                                    ESTC_GATT_LED_COLOR_CHAR_LEN,
+                                    true);
+            on_led_state_char_write((uint8_t *) &(led_params.state),
+                                    ESTC_GATT_LED_STATE_CHAR_LEN, 
+                                    true);
 
             break;
 
@@ -482,7 +492,7 @@ static void estc_ble_service_led_save_init(void)
 
     if (NRF_SUCCESS != fds_init())
     {
-        pwm_set_duty_cycle(&my_pwm, pwm_channel_indicator, pwm_max_pct);
+        pwm_set_duty_cycle(&estc_ble_service_pwm, pwm_channel_indicator, pwm_max_pct);
     }
 }
 
@@ -495,9 +505,9 @@ static void estc_ble_service_pwm_hw_init(void)
         NRF_GPIO_PIN_MAP(0, 12), /* Blue Channel */
     };
 
-    pwm_init(&my_pwm, channels, pwm_max_pct, true);
-    pwm_start(&my_pwm);
-    pwm_set_duty_cycle(&my_pwm, pwm_channel_indicator, 0);
+    pwm_init(&estc_ble_service_pwm, channels, pwm_max_pct, true);
+    pwm_start(&estc_ble_service_pwm);
+    pwm_set_duty_cycle(&estc_ble_service_pwm, pwm_channel_indicator, 0);
 }
 
 void estc_ble_service_deps_init(void)
