@@ -26,7 +26,7 @@
 #define ESTC_BLE_SERVICE_NOTIFYING_DELAY_MS 100
 APP_TIMER_DEF(notify_led_timer);
 
-#define LED_STORAGE_INDICATION_DELAY_MS 1000
+#define LED_STORAGE_INDICATION_DELAY_MS 500
 APP_TIMER_DEF(led_storage_clean_timer);
 
 APP_TIMER_DEF(debounce_timer);
@@ -98,16 +98,26 @@ static void debounce_timer_handler(void *ctx)
     button_debounce_check((button_t *) &button);
 }
 
-static void led_set_state(uint8_t state)
-{
-    (state ? pwm_start : pwm_stop)(&estc_ble_service_pwm);
-}
-
 static void led_set_color(rgb_t color)
 {
-    pwm_set_duty_cycle(&estc_ble_service_pwm, pwm_channel_red, ((uint16_t) color.r * pwm_max_pct) / 255);
-    pwm_set_duty_cycle(&estc_ble_service_pwm, pwm_channel_green, ((uint16_t) color.g * pwm_max_pct) / 255);
-    pwm_set_duty_cycle(&estc_ble_service_pwm, pwm_channel_blue, ((uint16_t) color.b * pwm_max_pct) / 255);
+    pwm_set_duty_cycle(&estc_ble_service_pwm,
+                       pwm_channel_red,
+                       ((uint16_t) color.r * pwm_max_pct) / 255);
+
+    pwm_set_duty_cycle(&estc_ble_service_pwm,
+                       pwm_channel_green,
+                       ((uint16_t) color.g * pwm_max_pct) / 255);
+
+    pwm_set_duty_cycle(&estc_ble_service_pwm,
+                       pwm_channel_blue,
+                       ((uint16_t) color.b * pwm_max_pct) / 255);
+}
+
+static void led_update(led_params_t *params)
+{
+    static const rgb_t black = (rgb_t) {0, 0, 0};
+
+    led_set_color(params->state ? params->color : black);
 }
 
 static void notify_led_timer_handler(void *ctx)
@@ -248,8 +258,7 @@ static void fds_on_init(void)
         }
     }
 
-    led_set_color(led_params.color);
-    led_set_state(led_params.state);
+    led_update((led_params_t *) &led_params);
 }
 
 static void fds_events_handler(fds_evt_t const * p_evt)
@@ -282,7 +291,7 @@ static void on_led_color_char_write(const uint8_t *data, uint16_t len, bool on_c
     }
 
     led_params.color = *(rgb_t *) data;
-    led_set_color(led_params.color);
+    led_update((led_params_t *) &led_params);
     
     if (on_connected)
     {
@@ -319,7 +328,7 @@ static void on_led_state_char_write(const uint8_t *data, uint16_t len, bool on_c
     }
 
     led_params.state = *(uint8_t *) data;
-    led_set_state(led_params.state);
+    led_update((led_params_t *) &led_params);
     
     if (on_connected)
     {
@@ -576,15 +585,15 @@ void estc_ble_service_led_storage_clean(void)
 
     if (ret_code == NRF_SUCCESS)
     {
+        pwm_set_duty_cycle(&estc_ble_service_pwm, pwm_channel_indicator, 100);
+        app_timer_start(led_storage_clean_timer, APP_TIMER_TICKS(LED_STORAGE_INDICATION_DELAY_MS), NULL);
+
         NRF_LOG_INFO("Clean saves");
     }
     else
     {
         NRF_LOG_ERROR("Unable to clean saves");
     }
-
-    pwm_set_duty_cycle(&estc_ble_service_pwm, pwm_channel_indicator, 100);
-    app_timer_start(led_storage_clean_timer, APP_TIMER_TICKS(LED_STORAGE_INDICATION_DELAY_MS), NULL);
 }
 
 
