@@ -8,6 +8,8 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "app_timer.h"
+
 typedef struct {
     uint16_t dblclk_pause_ms; 
     uint16_t hold_pause_short_ms; 
@@ -19,10 +21,6 @@ typedef struct {
     void (*onclick)(uint8_t);
     void (*onhold)(void);
     bool (*is_pressed)(void);
-
-    void (*schedule_click_check)(uint32_t);
-    void (*schedule_hold_check)(uint32_t);
-    void (*schedule_debounce_check)(uint32_t);
 } button_callbacks_t;
 
 typedef struct {
@@ -31,15 +29,32 @@ typedef struct {
 
     button_timings_t timings;
     button_callbacks_t callbacks;
+
+    app_timer_id_t * debounce_timer_ptr;
+    app_timer_id_t * click_timer_ptr;
+    app_timer_id_t * hold_timer_ptr;
 } button_t;
+
+#define BUTTON_DEF(BUTTON_NAME)\
+APP_TIMER_DEF(CONCAT_2(BUTTON_NAME, _debounce_timer));\
+APP_TIMER_DEF(CONCAT_2(BUTTON_NAME, _click_timer));\
+APP_TIMER_DEF(CONCAT_2(BUTTON_NAME, _hold_timer));\
+\
+static volatile button_t BUTTON_NAME = \
+{\
+    false,\
+    0,\
+    (button_timings_t) {0, 0, 0, 0},\
+    (button_callbacks_t) {NULL, NULL, NULL},\
+    (app_timer_id_t * const) &CONCAT_2(BUTTON_NAME, _debounce_timer),\
+    (app_timer_id_t * const) &CONCAT_2(BUTTON_NAME, _click_timer),\
+    (app_timer_id_t * const) &CONCAT_2(BUTTON_NAME, _hold_timer)\
+}
 
 void button_init(button_t *b,
                  button_timings_t const * timings,
                  button_callbacks_t const * callbacks);
 
-void button_click_check(button_t *b);
-void button_hold_check(button_t *b);
-void button_debounce_check(button_t *b);
 void button_first_run(button_t *b);
 
 #ifdef __cplusplus

@@ -29,19 +29,10 @@ APP_TIMER_DEF(notify_led_timer);
 #define LED_STORAGE_INDICATION_DELAY_MS 500
 APP_TIMER_DEF(led_storage_clean_timer);
 
-APP_TIMER_DEF(debounce_timer);
-APP_TIMER_DEF(btnhold_timer);
-APP_TIMER_DEF(btnclk_timer);
-
 #define BUTTON_GPIO NRF_GPIO_PIN_MAP(1,  6)
 #define BUTTON_ACTIVE_LEVEL 0
 
-enum { btn_dblclk_pause = 200 };
-enum { btnhold_period_first_ms = 500 };
-enum { btnhold_period_next_ms = 50 };
-enum { debounce_period_ms = 50 };
-
-static volatile button_t button;
+BUTTON_DEF(button);
 
 static ble_uuid128_t const m_base_uuid128 = { ESTC_BASE_UUID };
 
@@ -82,21 +73,6 @@ static pwm_wrapper_t estc_ble_service_pwm =
     .seq_values = &estc_ble_service_pwm_seq_values,
     .seq = &estc_ble_service_pwm_seq
 };
-
-static void btnhold_timer_handler(void *ctx)
-{
-    button_hold_check((button_t *) &button);
-}
-
-static void btnclk_timer_handler(void *ctx)
-{
-    button_click_check((button_t *) &button);
-}
-
-static void debounce_timer_handler(void *ctx)
-{
-    button_debounce_check((button_t *) &button);
-}
 
 static void led_set_color(rgb_t color)
 {
@@ -408,18 +384,6 @@ ret_code_t estc_ble_service_init(ble_estc_service_t *service, void *ctx)
                      APP_TIMER_MODE_SINGLE_SHOT,
                      notify_led_timer_handler);
 
-    app_timer_create(&debounce_timer,
-                     APP_TIMER_MODE_SINGLE_SHOT,
-                     debounce_timer_handler);
-
-    app_timer_create(&btnclk_timer,
-                     APP_TIMER_MODE_SINGLE_SHOT,
-                     btnclk_timer_handler);
-
-    app_timer_create(&btnhold_timer,
-                     APP_TIMER_MODE_SINGLE_SHOT,
-                     btnhold_timer_handler);
-
     app_timer_create(&led_storage_clean_timer,
                      APP_TIMER_MODE_SINGLE_SHOT,
                      led_storage_clean_timer_handler);
@@ -596,7 +560,6 @@ void estc_ble_service_led_storage_clean(void)
     }
 }
 
-
 static void gpiote_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
 {
     button_first_run((button_t *) &button);
@@ -608,10 +571,13 @@ static void button_onclick(uint8_t clicks)
     {
         estc_ble_service_led_storage_clean();
     }
+
+    NRF_LOG_INFO("%s: %d", __func__, clicks);
 }
 
 static void button_onhold(void)
 {
+    NRF_LOG_INFO("%s", __func__);
 }
 
 static bool button_is_pressed(void)
@@ -619,20 +585,11 @@ static bool button_is_pressed(void)
     return nrf_gpio_pin_read(BUTTON_GPIO) == BUTTON_ACTIVE_LEVEL;
 }
 
-static void button_schedule_click_check(uint32_t delay_ms)
-{
-    app_timer_start(btnclk_timer, APP_TIMER_TICKS(delay_ms), NULL);
-}
+enum { btn_dblclk_pause = 200 };
+enum { btnhold_period_first_ms = 500 };
+enum { btnhold_period_next_ms = 50 };
+enum { debounce_period_ms = 50 };
 
-static void button_schedule_hold_check(uint32_t delay_ms)
-{
-    app_timer_start(btnhold_timer, APP_TIMER_TICKS(delay_ms), NULL);
-}
-
-static void button_schedule_debounce_check(uint32_t delay_ms)
-{
-    app_timer_start(debounce_timer, APP_TIMER_TICKS(delay_ms), NULL);
-}
 static button_timings_t const button_timings = {
     .dblclk_pause_ms = btn_dblclk_pause, 
     .hold_pause_short_ms = btnhold_period_next_ms,
@@ -643,10 +600,7 @@ static button_timings_t const button_timings = {
 static button_callbacks_t const button_callbacks = {
     .onclick = button_onclick,
     .onhold = button_onhold,
-    .is_pressed = button_is_pressed,
-    .schedule_click_check = button_schedule_click_check,
-    .schedule_hold_check = button_schedule_hold_check,
-    .schedule_debounce_check = button_schedule_debounce_check
+    .is_pressed = button_is_pressed
 };
 
 static void gpiote_init_on_toggle(nrfx_gpiote_pin_t pin,
